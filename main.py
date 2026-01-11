@@ -15,8 +15,14 @@ choice = show_admin_sidebar()
 
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
-if st.session_state.get('logged_in') and choice == "📊 Dashboard Laporan":
-    render_dashboard()
+if st.session_state.get('logged_in'):
+
+    if choice == "📊 Dashboard Laporan":
+        render_dashboard()
+
+    elif choice == "ℹ️ Informasi Aplikasi":
+        from admin_page import render_info
+        render_info()
 else:
     st.markdown("<h1 style='text-align: center; color: #1e3a8a;'>Petani_Abies AI</h1>", unsafe_allow_html=True)
     st.divider()
