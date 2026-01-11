@@ -24,23 +24,14 @@ def preprocess_image(image):
     # Normalisasi khusus ResNet50 agar prediksi akurat
     x = tf.keras.applications.resnet50.preprocess_input(x)
     return x
-
 def save_to_google_sheets(new_data_df):
-    """
-    Menambahkan baris data ke Google Sheets menggunakan koneksi Streamlit GSheets.
-    new_data_df harus dalam bentuk pandas DataFrame.
-    """
     try:
-        # Membangun koneksi ke Google Sheets
         conn = st.connection("gsheets", type=GSheetsConnection)
-        
-        # Membaca data yang sudah ada di Sheet1
+        # Ambil data lama
         existing_data = conn.read(worksheet="Sheet1")
-        
-        # Menggabungkan data lama dengan data baru menggunakan concat
+        # Gabungkan dengan data baru (DataFrame)
         updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
-        
-        # Mengunggah kembali tabel yang telah diperbarui
+        # Update kembali ke Sheet
         conn.update(worksheet="Sheet1", data=updated_df)
     except Exception as e:
         st.error(f"Gagal menyimpan ke Google Sheets: {e}")
