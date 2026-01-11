@@ -4,19 +4,29 @@ import pandas as pd
 def show_admin_sidebar():
     with st.sidebar:
         st.markdown("### 🔐 Admin Panel")
+
+        # Jika belum login
         if not st.session_state.get('logged_in', False):
             pwd = st.text_input("Password", type="password")
             if st.button("Login"):
                 if pwd == "admin123":
                     st.session_state.logged_in = True
                     st.rerun()
-            return "Scan"
+            return None  # belum boleh akses menu
+
+        # Jika sudah login
         else:
-            menu = st.radio("Menu:", ["🔍 Scan Ikan", "📊 Dashboard Laporan"])
+            menu = st.radio(
+                "Menu:",
+                ["📊 Dashboard Laporan"]
+            )
+
             if st.button("Logout"):
                 st.session_state.logged_in = False
                 st.rerun()
+
             return menu
+
 
 def render_dashboard():
     st.title("📊 Laporan Analisis")
