@@ -45,37 +45,29 @@ else:
         st.image(img, use_container_width=True, caption="Pratinjau Foto")
         
         # TOMBOL ANALISIS (Hanya Satu)
-        if st.button("🔍 ANALISIS SEKARANG"):
-            with st.spinner("AI sedang menganalisis dan mencatat data..."):
-                # 1. Pemrosesan AI
-                processed = preprocess_image(img)
-                prediction = model.predict(processed, verbose=0)
-                score = float(prediction[0][0])  # Output Sigmoid (0-1)
-                
-                # 2. Penentuan Label
-                label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
-                color = "error" if score > 0.5 else "success"
-                waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                
-                # 3. Tampilkan Hasil di Layar
-                getattr(st, color)(f"### Hasil: {label}")
-                st.write(f"**AI Confidence Score (Sigmoid):** `{score:.4f}`")
-                
-                # 4. Simpan ke Session State (Histori Sementara)
-                st.session_state.history.append({
-                    "Waktu": waktu_sekarang,
-                    "Hasil": label,
-                    "Sigmoid_Score": round(score, 4)
-                })
-                
-              # Di dalam main.py:
-new_row = pd.DataFrame([{
-    "Waktu": waktu_sekarang,
-    "Hasil_Klasifikasi": label,
-    "Sigmoid_Score": score
-}])
-
-save_to_google_sheets(new_row)
-
+       if st.button("🔍 ANALISIS SEKARANG"):
+    with st.spinner("AI sedang bekerja..."):
+        # 1. AI PROSES
+        processed = preprocess_image(img)
+        prediction = model.predict(processed, verbose=0)
+        score = float(prediction[0][0])
+        
+        # 2. DEFINISIKAN VARIABEL (Agar tidak NameError)
+        waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
+        
+        # 3. TAMPILKAN HASIL
+        st.success(f"### Hasil: {label}")
+        
+        # 4. SIMPAN KE GOOGLE SHEETS
+        new_row = pd.DataFrame([{
+            "Waktu": waktu_sekarang,
+            "Hasil_Klasifikasi": label,
+            "Sigmoid_Score": score
+        }])
+        
+        from utils import save_to_google_sheets
+        save_to_google_sheets(new_row)
+        st.toast("✅ Data tersimpan ke Google Sheets!")
 st.markdown('</div>', unsafe_allow_html=True)
 render_footer()
