@@ -1,77 +1,62 @@
 import streamlit as st
-from PIL import Image
-from datetime import datetime
 import pandas as pd
+from streamlit_gsheets import GSheetsConnection
 
-# Import modul lokal
-from styles import apply_custom_css, render_footer
-from utils import load_model_cloud, preprocess_image, save_to_google_sheets
-from admin_page import show_navbar, render_admin_login, render_dashboard
-
-# Konfigurasi Halaman
-st.set_page_config(page_title="Petani_Abies AI", layout="wide")
-apply_custom_css()
-model = load_model_cloud()
-
-# Tampilkan Navbar
-choice, sub_choice = show_navbar()
-
-st.markdown('<div class="main-content">', unsafe_allow_html=True)
-
-if choice == "🏠 Halaman Utama":
-    st.title("🐟 Halaman Utama - Scan Ikan")
-    file = st.file_uploader("📤 Upload Foto Ikan", type=['jpg', 'jpeg', 'png'])
-    
-    if file:
-        img = Image.open(file).convert("RGB")
-        col_foto, col_aksi = st.columns([2, 1])
+def show_navbar():
+    with st.sidebar:
+        st.markdown("### 🧭 Navigasi")
+        # Menu Utama
+        choice = st.selectbox("Pilih Halaman:", ["🏠 Halaman Utama", "🛡️ Admin", "👨‍🔬 Hasil Pakar"])
         
-        with col_foto:
-            st.image(img, use_container_width=True, caption="Pratinjau Foto")
+        sub_choice = None
+        if choice == "👨‍🔬 Hasil Pakar":
+            sub_choice = st.selectbox("Pilih Kategori:", ["Pakar Dosen", "Petani", "Dinas Perikanan"])
             
-        with col_aksi:
-            # TOMBOL ANALISIS DI KANAN FOTO
-            if st.button("🔍 ANALISIS SEKARANG"):
-                with st.spinner("AI sedang bekerja..."):
-                    # Logika Scan Anda (TIDAK BERUBAH)
-                    processed = preprocess_image(img)
-                    prediction = model.predict(processed, verbose=0)
-                    score = float(prediction[0][0])
-                    
-                    # Variabel Hasil
-                    waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
-                    
-                    # Tampilkan hasil di bawah tombol
-                    if score > 0.5:
-                        st.error(f"### {label}")
-                    else:
-                        st.success(f"### {label}")
-                    
-                    st.write(f"Confidence Score: `{score:.4f}`")
-                    
-                    # Simpan ke Google Sheets
-                    new_row = pd.DataFrame([{
-                        "Waktu": waktu_sekarang,
-                        "Hasil_Klasifikasi": label,
-                        "Sigmoid_Score": score
-                    }])
-                    save_to_google_sheets(new_row)
-                    st.toast("Data Berhasil Dicatat!")
+        return choice, sub_choice
 
-    st.divider()
-    # Login di Footer
+def render_admin_login():
+    """Alur Login Admin bertahap sesuai permintaan Anda"""
+    st.title("🔐 Panel Akses Admin")
+    
+    # Inisialisasi status form jika belum ada
+    if 'show_login_form' not in st.session_state:
+        st.session_state.show_login_form = False
+
     if not st.session_state.get('logged_in', False):
-        if st.button("🔑 Login Admin Panel"):
-            st.info("Silakan pilih menu 'Admin' di sidebar untuk memasukkan sandi.")
+        if not st.session_state.show_login_form:
+            # Tombol awal sebelum muncul input password
+            if st.button("Masuk ke Sistem Admin"):
+                st.session_state.show_login_form = True
+                st.rerun()
+        else:
+            pwd = st.text_input("Masukkan Sandi Admin", type="password")
+            col1, col2 = st.columns(2)
+            if col1.button("Login Sekarang"):
+                if pwd == "admin123":
+                    st.session_state.logged_in = True
+                    st.session_state.show_login_form = False
+                    st.rerun()
+                else:
+                    st.error("Sandi Salah!")
+            if col2.button("Batal"):
+                st.session_state.show_login_form = False
+                st.rerun()
+        return False
+    return True
 
-elif choice == "🛡️ Admin":
-    if render_admin_login():
-        render_dashboard()
-
-elif choice == "👨‍🔬 Hasil Pakar":
-    st.title(f"👨‍🔬 Halaman {sub_choice}")
-    st.info(f"Ini adalah ruang khusus untuk menampilkan informasi bagi {sub_choice}.")
-
-st.markdown('</div>', unsafe_allow_html=True)
-render_footer()
+def render_dashboard():
+    """Menampilkan data riwayat dari Google Sheets"""
+    st.title("📊 Laporan Riwayat Analisis")
+    try:
+        conn = st.connection("gsheets", type=GSheetsConnection)
+        df = conn.read(worksheet="Sheet1", ttl=0)
+        
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+            if st.button("Logout Admin"):
+                st.session_state.logged_in = False
+                st.rerun()
+        else:
+            st.info("Belum ada data di Google Sheets.")
+    except Exception as e:
+        st.error(f"Gagal memuat data: {e}")
