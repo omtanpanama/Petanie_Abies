@@ -34,7 +34,6 @@ def apply_custom_css():
             z-index: 999;
         }
         .footer-text { color: #94a3b8; font-size: 11px; margin: 0; }
-        
         .main-content { margin-bottom: 70px; }
         </style>
         """, unsafe_allow_html=True)
