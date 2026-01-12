@@ -68,15 +68,14 @@ else:
                     "Sigmoid_Score": round(score, 4)
                 })
                 
-                # 5. Simpan ke Google Sheets (Data Permanen)
-                new_row = pd.DataFrame([{
-                    "Waktu": waktu_sekarang,
-                    "Hasil_Klasifikasi": label,
-                    "Sigmoid_Score": score
-                }])
-                
-                save_to_google_sheets(new_row)
-                st.toast("✅ Data berhasil dicatat ke Google Sheets!")
+              # Di dalam main.py:
+new_row = pd.DataFrame([{
+    "Waktu": waktu_sekarang,
+    "Hasil_Klasifikasi": label,
+    "Sigmoid_Score": score
+}])
+
+save_to_google_sheets(new_row)
 
 st.markdown('</div>', unsafe_allow_html=True)
 render_footer()
