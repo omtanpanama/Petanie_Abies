@@ -6,7 +6,7 @@ def show_navbar():
     with st.sidebar:
         st.markdown("### 🧭 Navigasi")
         # Menu Utama
-        choice = st.selectbox("Pilih Halaman:", ["🏠 Halaman Utama", "🛡️ Admin", "👨‍🔬 Hasil Pakar"])
+        choice = st.selectbox("Pilih Halaman:", ["🏠 Halaman Utama", "👨‍🔬 Hasil Pakar", "🛡️ Admin"])
         
         sub_choice = None
         if choice == "👨‍🔬 Hasil Pakar":
