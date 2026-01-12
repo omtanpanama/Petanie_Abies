@@ -50,10 +50,10 @@ if choice == "🏠 Halaman Utama":
                     save_to_google_sheets(new_row)
                     st.toast("Data Berhasil Dicatat!")
 
-    st.divider()
-    if not st.session_state.get('logged_in', False):
-        if st.button("🔑 Login Admin Panel"):
-            st.info("Beralih ke menu 'Admin' di sidebar untuk memasukkan sandi.")
+ #   st.divider()
+  #  if not st.session_state.get('logged_in', False):
+   #     if st.button("🔑 Login Admin Panel"):
+    #        st.info("Beralih ke menu 'Admin' di sidebar untuk memasukkan sandi.")
 
 elif choice == "🛡️ Admin":
     if render_admin_login():
