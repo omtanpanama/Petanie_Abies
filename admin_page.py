@@ -15,16 +15,12 @@ def show_navbar():
         return choice, sub_choice
 
 def render_admin_login():
-    """Alur Login Admin bertahap sesuai permintaan Anda"""
     st.title("🔐 Panel Akses Admin")
-    
-    # Inisialisasi status form jika belum ada
     if 'show_login_form' not in st.session_state:
         st.session_state.show_login_form = False
 
     if not st.session_state.get('logged_in', False):
         if not st.session_state.show_login_form:
-            # Tombol awal sebelum muncul input password
             if st.button("Masuk ke Sistem Admin"):
                 st.session_state.show_login_form = True
                 st.rerun()
@@ -45,12 +41,10 @@ def render_admin_login():
     return True
 
 def render_dashboard():
-    """Menampilkan data riwayat dari Google Sheets"""
     st.title("📊 Laporan Riwayat Analisis")
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         df = conn.read(worksheet="Sheet1", ttl=0)
-        
         if not df.empty:
             st.dataframe(df, use_container_width=True)
             if st.button("Logout Admin"):
