@@ -4,40 +4,56 @@ from streamlit_gsheets import GSheetsConnection
 
 def show_navbar():
     with st.sidebar:
-        st.markdown("### 🧭 Menu Navigasi")
-        main_menu = st.selectbox("Pilih Halaman:", ["🏠 Utama", "🛡️ Admin", "👨‍🔬 Hasil Pakar"])
+        st.markdown("### 🧭 Navigasi")
+        # Menu Utama
+        choice = st.selectbox("Pilih Halaman:", ["🏠 Halaman Utama", "🛡️ Admin", "👨‍🔬 Hasil Pakar"])
         
-        sub_menu = None
-        if main_menu == "👨‍🔬 Hasil Pakar":
-            sub_menu = st.selectbox("Kategori Pakar:", ["Pakar Dosen", "Petani", "Dinas Perikanan"])
-        return main_menu, sub_menu
+        sub_choice = None
+        if choice == "👨‍🔬 Hasil Pakar":
+            # Dropdown kedua untuk Hasil Pakar
+            sub_choice = st.selectbox("Pilih Kategori:", ["Pakar Dosen", "Petani", "Dinas Perikanan"])
+            
+        return choice, sub_choice
 
 def render_admin_login():
-    st.title("🔐 Login Admin")
-    if 'show_login' not in st.session_state: st.session_state.show_login = False
-
+    """Alur Login Admin bertahap"""
+    st.title("🔐 Panel Akses Admin")
+    
     if not st.session_state.get('logged_in', False):
-        if not st.session_state.show_login:
-            if st.button("Klik untuk Masuk Admin"):
-                st.session_state.show_login = True
+        if not st.session_state.get('show_login_form', False):
+            if st.button("Masuk ke Sistem Admin"):
+                st.session_state.show_login_form = True
                 st.rerun()
         else:
-            pwd = st.text_input("Masukkan Sandi", type="password")
-            if st.button("Login Sekarang"):
+            pwd = st.text_input("Masukkan Sandi Admin", type="password")
+            col1, col2 = st.columns(2)
+            if col1.button("Login Sekarang"):
                 if pwd == "admin123":
                     st.session_state.logged_in = True
+                    st.session_state.show_login_form = False
                     st.rerun()
-                else: st.error("Sandi Salah!")
+                else:
+                    st.error("Sandi Salah!")
+            if col2.button("Batal"):
+                st.session_state.show_login_form = False
+                st.rerun()
         return False
     return True
 
 def render_dashboard():
-    st.title("📊 Laporan Google Sheets")
+    """Menampilkan data riwayat langsung dari Google Sheets"""
+    st.title("📊 Laporan Riwayat Analisis")
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
-        df = conn.read(worksheet="Sheet1", ttl=0) # Ambil data terbaru
-        st.dataframe(df, use_container_width=True)
-        if st.button("Logout"):
-            st.session_state.logged_in = False
-            st.rerun()
-    except Exception as e: st.error(f"Gagal muat data: {e}")
+        # Membaca data terbaru dari Google Sheets
+        df = conn.read(worksheet="Sheet1", ttl=0)
+        
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+            if st.button("Logout Admin"):
+                st.session_state.logged_in = False
+                st.rerun()
+        else:
+            st.info("Belum ada data di Google Sheets.")
+    except Exception as e:
+        st.error(f"Gagal memuat data: {e}")
