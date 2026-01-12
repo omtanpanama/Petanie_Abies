@@ -25,13 +25,22 @@ def preprocess_image(image):
     x = tf.keras.applications.resnet50.preprocess_input(x)
     return x
 def save_to_google_sheets(new_data_df):
+    """Menambahkan baris data baru ke bawah tanpa menimpa data lama"""
     try:
+        # Hubungkan ke Google Sheets
         conn = st.connection("gsheets", type=GSheetsConnection)
-        # Ambil data lama
-        existing_data = conn.read(worksheet="Sheet1")
-        # Gabungkan dengan data baru (DataFrame)
+        
+        # 1. Baca data yang sudah ada
+        # SANGAT PENTING: Gunakan ttl=0 agar Streamlit selalu mengambil data terbaru 
+        # dari Google Sheets, bukan dari memori/cache.
+        existing_data = conn.read(worksheet="Sheet1", ttl=0)
+        
+        # 2. Gabungkan data lama dengan baris baru (pd.concat)
+        # ignore_index=True memastikan baris baru diletakkan di nomor urut berikutnya.
         updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
-        # Update kembali ke Sheet
+        
+        # 3. Update kembali ke Google Sheets
         conn.update(worksheet="Sheet1", data=updated_df)
+        
     except Exception as e:
         st.error(f"Gagal menyimpan ke Google Sheets: {e}")
