@@ -38,33 +38,39 @@ else:
     st.markdown("<h1 style='text-align: center; color: #1e3a8a;'>Petani_Abies AI</h1>", unsafe_allow_html=True)
     st.divider()
 
-    file = st.file_uploader("📤 Upload Foto Ikan", type=['jpg', 'jpeg', 'png'])
+   file = st.file_uploader("📤 Upload Foto Ikan", type=['jpg', 'jpeg', 'png'])
     
     if file:
         img = Image.open(file).convert("RGB")
-        st.image(img, use_container_width=True, caption="Pratinjau Foto")
         
-        # PERBAIKAN: Tombol Analisis dan Indentasinya
-        if st.button("🔍 ANALISIS SEKARANG"):
-            with st.spinner("AI sedang bekerja..."):
-                # 1. AI PROSES
-                processed = preprocess_image(img)
-                prediction = model.predict(processed, verbose=0)
-                score = float(prediction[0][0])
-                
-                # 2. DEFINISIKAN VARIABEL
-                waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
-                color = "error" if score > 0.5 else "success"
-                
-                # 3. TAMPILKAN HASIL
-                if score > 0.5:
-                    st.error(f"### Hasil: {label}")
-                else:
-                    st.success(f"### Hasil: {label}")
-                
-                st.write(f"**AI Confidence Score (Sigmoid):** `{score:.4f}`")
-                
+        # Membuat 2 kolom: kolom kiri untuk foto (lebar 2), kolom kanan untuk tombol (lebar 1)
+        col_foto, col_aksi = st.columns([2, 1])
+        
+        with col_foto:
+            # Menampilkan foto dengan ukuran sedang
+            st.image(img, caption="Pratinjau Foto", width=300)
+            
+        with col_aksi:
+            st.write("### Kontrol")
+            # Tombol Analisis diletakkan di kolom kanan
+            if st.button("🔍 ANALISIS SEKARANG"):
+                with st.spinner("Proses..."):
+                    # 1. Definisi Waktu & Proses AI
+                    waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    processed = preprocess_image(img)
+                    prediction = model.predict(processed, verbose=0)
+                    score = float(prediction[0][0])
+                    
+                    # 2. Penentuan Label
+                    label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
+                    
+                    # 3. TAMPILKAN HASIL (Tepat di bawah tombol karena masih dalam 'with col_aksi')
+                    if score > 0.5:
+                        st.error(f"**Hasil:**\n\n{label}")
+                    else:
+                        st.success(f"**Hasil:**\n\n{label}")
+                    
+                    st.info(f"Score: {score:.4f}")
                 # 4. SIMPAN KE GOOGLE SHEETS
                 new_row = pd.DataFrame([{
                     "Waktu": waktu_sekarang,
