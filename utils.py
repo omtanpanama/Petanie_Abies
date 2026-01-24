@@ -21,14 +21,14 @@ def preprocess_image(image):
     img = image.resize((224, 224))
     x = tf.keras.preprocessing.image.img_to_array(img)
     x = np.expand_dims(x, axis=0)
+    # Preprocess ResNet50: Konversi RGB ke BGR & Zero-center tiap channel warna
     x = tf.keras.applications.resnet50.preprocess_input(x)
     return x
 
 def generate_gradcam(img, model):
-    # Preprocess gambar
     img_array = preprocess_image(img)
     
-    # Layer terakhir ResNet50
+    # Layer konvolusi terakhir ResNet50 sebelum Global Average Pooling
     last_conv_layer_name = "conv5_block3_out"
     grad_model = tf.keras.models.Model(
         [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
@@ -36,8 +36,10 @@ def generate_gradcam(img, model):
 
     with tf.GradientTape() as tape:
         last_conv_layer_output, preds = grad_model(img_array)
-        class_channel = preds[:, 0]
+        # Karena menggunakan Sigmoid, preds adalah array biner tunggal
+        class_channel = preds[0]
 
+    # Menghitung gradien kelas terhadap output layer konvolusi terakhir
     grads = tape.gradient(class_channel, last_conv_layer_output)
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
     
@@ -45,14 +47,15 @@ def generate_gradcam(img, model):
     heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
     heatmap = tf.squeeze(heatmap)
 
-    heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
+    # Normalisasi heatmap agar rentang nilainya 0-1
+    heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-10)
     heatmap = heatmap.numpy()
 
-    # Resize Heatmap
+    # Gabungkan heatmap dengan gambar asli
     img_resized = np.array(img.resize((224, 224)))
     heatmap_resized = cv2.resize(heatmap, (224, 224))
     
-    # Ambil titik terpanas (yaitu koordinat dengan nilai heatmap tertinggi)
+    # Cari titik koordinat dengan intensitas tertinggi (max_loc)
     _, _, _, max_loc = cv2.minMaxLoc(heatmap_resized)
     
     heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
@@ -64,25 +67,25 @@ def get_explanation(label, max_loc):
     if label == "KUALITAS BAIK":
         return (
             "**✅ ANALISIS KUALITAS BAIK:**\n\n"
-            "Berdasarkan citra, benih ikan memiliki:\n"
-            "- Bentuk tubuh proporsional & simetris.\n"
-            "- Sirip lengkap & tidak ada cacat fisik.\n"
-            "- Warna tubuh cerah & seragam sesuai standar BSN."
+            "Berdasarkan standar fisik, benih ini memiliki:\n"
+            "- Bentuk tubuh proporsional, simetris, dan tidak bengkok.\n"
+            "- Kelengkapan sirip yang utuh dan tidak cacat.\n"
+            "- Warna tubuh seragam dan cerah (sehat)."
         )
     else:
-        # Logika koordinat Y untuk menentukan area masalah
+        # Analisis area berdasarkan koordinat Y (0-224 piksel)
         y = max_loc[1] 
         if y < 80:
-            detail = "Terdeteksi kelainan/cacat pada bagian **Sirip Punggung**."
+            detail = "Ditemukan cacat/kelainan fisik pada **Sirip Punggung**."
         elif 80 <= y <= 160:
-            detail = "Bentuk **Tubuh tidak proporsional** (Indikasi bengkok atau tidak simetris)."
+            detail = "**Bentuk Tubuh tidak ideal** (indikasi bengkok, tidak simetris, atau cacat tubuh)."
         else:
             detail = "Terdeteksi kelainan pada area **Ekor atau Sirip Bawah**."
             
         return (
             f"**❌ ANALISIS KUALITAS BURUK:**\n\n"
-            f"Penyebab utama: {detail}\n"
-            f"- Warna tubuh terindikasi pucat atau tidak seragam pada area yang ditandai merah."
+            f"**Faktor Utama:** {detail}\n"
+            f"- Warna tubuh terlihat pucat atau tidak merata pada area yang ditandai merah."
         )
 
 def save_to_google_sheets(new_data_df):
@@ -92,4 +95,4 @@ def save_to_google_sheets(new_data_df):
         updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
         conn.update(worksheet="Sheet1", data=updated_df)
     except Exception as e:
-        st.error(f"Gagal menyimpan ke Google Sheets: {e}")
+        st.error(f"Gagal mencatat data: {e}")
