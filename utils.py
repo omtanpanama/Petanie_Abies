@@ -51,6 +51,7 @@ def generate_gradcam(img, model):
     heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
     superimposed_img = cv2.addWeighted(img_resized, 0.6, heatmap_color, 0.4, 0)
     
+    # MENGEMBALIKAN 3 NILAI (WAJIB)
     return superimposed_img, max_loc, heatmap_resized
 
 def get_explanation(label, max_loc, heatmap_data):
@@ -65,18 +66,17 @@ def get_explanation(label, max_loc, heatmap_data):
         center_x, center_y = 112, 112
         distance = np.sqrt((x_hit - center_x)**2 + (y_hit - center_y)**2)
         
-        # 1. Cek Potensi Cacat Tubuh (Area Pusat)
-        if distance < 65:
-            reasons.append("Bentuk **Tubuh tidak ideal** (indikasi bengkok atau tidak simetris).")
-        
-        # 2. Cek Potensi Cacat Sirip/Ekor (Area Pinggiran)
-        # Kami mengecek jika titik panas di pinggir ATAU intensitas di tepi cukup tinggi
-        if distance >= 65:
+        # Logika Radius: Jika titik merah agak jauh dari tengah (>50), itu area Sirip/Ekor
+        if distance > 50:
             reasons.append("Terdeteksi **Kerusakan/Sobek pada area Sirip atau Ekor**.")
         
-        # Jika hanya ada satu titik panas namun sangat kuat, tambahkan detail orientasi
-        if len(reasons) == 0:
-            reasons.append("Anomali pada morfologi tubuh benih tidak sesuai standar fisik.")
+        # Logika Area Pusat: Jika titik merah di tengah, itu Tubuh
+        if distance <= 70:
+            reasons.append("Bentuk **Tubuh tidak ideal** (indikasi bengkok atau tidak simetris).")
+        
+        # Jika AI menemukan cacat tapi tidak masuk kategori radius (Safety Logic)
+        if not reasons:
+            reasons.append("Anomali morfologi pada area yang ditandai warna merah.")
 
         penjelasan_final = "**❌ ANALISIS KUALITAS BURUK:**\n\n"
         for r in reasons:
