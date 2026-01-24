@@ -28,26 +28,26 @@ if choice == "🏠 Halaman Utama":
         img = Image.open(file).convert("RGB")
         img_np = np.array(img)
         
-        with st.spinner("🔍 Memvalidasi objek dan memproses analisis..."):
-            # Logika Filter Bukan Ikan (Berdasarkan sebaran warna & skor AI)
+        with st.spinner("🔍 AI sedang memvalidasi objek dan memindai fisik ikan..."):
+            # Filter Bukan Ikan berdasarkan variasi tekstur (Standard Deviation)
             std_dev = np.std(img_np)
             processed = preprocess_image(img)
             prediction = model.predict(processed, verbose=0)
             score = float(prediction[0][0])
             
-            # Deteksi jika objek bukan ikan (berdasarkan keyakinan AI dan tekstur gambar)
+            # Deteksi jika objek bukan ikan (Threshold Keyakinan & Tekstur)
             if (0.47 < score < 0.53) or (std_dev < 15):
-                st.warning("⚠️ **Mohon maaf mas, ini sepertinya bukan foto ikan.** Silakan unggah foto benih ikan yang jelas.")
-                st.image(img, use_container_width=True, caption="Objek tidak teridentifikasi sebagai benih ikan.")
+                st.warning("⚠️ **Mohon maaf mas, ini sepertinya bukan foto ikan.** Silakan unggah foto benih ikan yang asli.")
+                st.image(img, use_container_width=True)
             else:
                 label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
                 confidence = score if score > 0.5 else (1 - score)
                 accuracy_pct = f"{confidence * 100:.2f}%"
                 
-                # Cek Kondisi Ikan Kering
+                # Cek Kondisi Ikan Kering (Pucat ekstrem)
                 is_dry = True if np.mean(img_np) > 200 else False
                 
-                # Generate Grad-CAM
+                # Visualisasi Grad-CAM
                 gradcam_img, max_loc, heatmap_raw = generate_gradcam(img, model)
                 
                 st.divider()
@@ -55,11 +55,9 @@ if choice == "🏠 Halaman Utama":
                 col_img, col_txt = st.columns([1.3, 1])
                 
                 with col_img:
-                    # Menampilkan Visualisasi di sebelah KIRI
-                    st.image(gradcam_img, use_container_width=True, caption=f"Visualisasi Grad-CAM (Keyakinan: {accuracy_pct})")
+                    st.image(gradcam_img, use_container_width=True, caption=f"Visualisasi Grad-CAM (Akurasi: {accuracy_pct})")
                     
                 with col_txt:
-                    # Menampilkan Keterangan di sebelah KANAN
                     st.write("### Diagnosa Pakar AI:")
                     if label == "KURANG SEHAT":
                         st.error(f"## {label}")
@@ -69,9 +67,10 @@ if choice == "🏠 Halaman Utama":
                     st.metric("Tingkat Keyakinan AI", accuracy_pct)
                     st.info(get_explanation(label, max_loc, heatmap_raw, is_dry))
                     
+                # Simpan otomatis
                 if "last_file" not in st.session_state or st.session_state.last_file != file.name:
                     waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    new_row = pd.DataFrame([{"Waktu": waktu, "Hasil": label, "Akurasi": accuracy_pct}])
+                    new_row = pd.DataFrame([{"Waktu": waktu, "Hasil": label, "Keyakinan": accuracy_pct}])
                     save_to_google_sheets(new_row)
                     st.session_state.last_file = file.name
 
