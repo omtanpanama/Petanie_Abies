@@ -33,7 +33,7 @@ def generate_gradcam(img, model):
 
     with tf.GradientTape() as tape:
         last_conv_layer_output, preds = grad_model(img_array)
-        class_channel = preds[0]
+        class_channel = preds[0] # Khusus aktivasi Sigmoid
 
     grads = tape.gradient(class_channel, last_conv_layer_output)
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
@@ -57,24 +57,31 @@ def get_explanation(label, max_loc):
     if label == "KUALITAS BAIK":
         return (
             "**✅ ANALISIS KUALITAS BAIK:**\n\n"
-            "Benih memenuhi kriteria fisik: Tubuh proporsional, simetris, dan sirip lengkap."
+            "Ikan sesuai dengan standar operasional Karanggeneng:\n"
+            "- Bentuk tubuh proporsional & simetris.\n"
+            "- Sirip utuh, tidak cacat, dan tidak sobek.\n"
+            "- Warna tubuh cerah sesuai kriteria benih sehat."
         )
     else:
-        # Logika Jarak dari Pusat (Solusi untuk posisi ikan acak)
         x_hit, y_hit = max_loc
-        center_x, center_y = 112, 112
+        center_x, center_y = 112, 112 # Pusat gambar 224x224
         distance = np.sqrt((x_hit - center_x)**2 + (y_hit - center_y)**2)
         
-        # Jika titik merah jauh dari tengah (>70 piksel), kemungkinan besar Sirip/Ekor
-        if distance > 70:
-            detail = "Terdeteksi kelainan pada area **Sirip atau Ekor** (sobek/cacat fisik)."
+        # Logika Radius: Ikan miring pun, sirip ada di pinggiran (distansi tinggi)
+        if distance > 55:
+            detail = "Terdeteksi **Kerusakan/Sobek pada Sirip atau Ekor**."
         else:
-            detail = "Terdeteksi kelainan pada **Bentuk Tubuh** (bengkok atau tidak simetris)."
+            if y_hit < 85:
+                detail = "Kelainan fisik pada **Sirip Punggung**."
+            elif y_hit > 140:
+                detail = "Kelainan fisik pada **Sirip Bawah/Perut**."
+            else:
+                detail = "**Bentuk Tubuh tidak ideal** (indikasi bengkok atau tidak simetris)."
             
         return (
             f"**❌ ANALISIS KUALITAS BURUK:**\n\n"
-            f"**Faktor Utama:** {detail}\n"
-            f"- AI mendeteksi anomali pada area yang ditandai warna merah."
+            f"**Diagnosa Utama:** {detail}\n"
+            f"- AI memfokuskan deteksi pada area berwarna merah (Heatmap)."
         )
 
 def save_to_google_sheets(new_data_df):
@@ -84,4 +91,4 @@ def save_to_google_sheets(new_data_df):
         updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
         conn.update(worksheet="Sheet1", data=updated_df)
     except Exception:
-        pass # Mengurangi lag saat otomatis
+        pass
