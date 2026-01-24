@@ -21,14 +21,11 @@ def preprocess_image(image):
     img = image.resize((224, 224))
     x = tf.keras.preprocessing.image.img_to_array(img)
     x = np.expand_dims(x, axis=0)
-    # Preprocess ResNet50: Konversi RGB ke BGR & Zero-center tiap channel warna
     x = tf.keras.applications.resnet50.preprocess_input(x)
     return x
 
 def generate_gradcam(img, model):
     img_array = preprocess_image(img)
-    
-    # Layer konvolusi terakhir ResNet50 sebelum Global Average Pooling
     last_conv_layer_name = "conv5_block3_out"
     grad_model = tf.keras.models.Model(
         [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
@@ -36,26 +33,19 @@ def generate_gradcam(img, model):
 
     with tf.GradientTape() as tape:
         last_conv_layer_output, preds = grad_model(img_array)
-        # Karena menggunakan Sigmoid, preds adalah array biner tunggal
         class_channel = preds[0]
 
-    # Menghitung gradien kelas terhadap output layer konvolusi terakhir
     grads = tape.gradient(class_channel, last_conv_layer_output)
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-    
     last_conv_layer_output = last_conv_layer_output[0]
     heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
     heatmap = tf.squeeze(heatmap)
 
-    # Normalisasi heatmap agar rentang nilainya 0-1
     heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-10)
     heatmap = heatmap.numpy()
 
-    # Gabungkan heatmap dengan gambar asli
     img_resized = np.array(img.resize((224, 224)))
     heatmap_resized = cv2.resize(heatmap, (224, 224))
-    
-    # Cari titik koordinat dengan intensitas tertinggi (max_loc)
     _, _, _, max_loc = cv2.minMaxLoc(heatmap_resized)
     
     heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
@@ -67,25 +57,24 @@ def get_explanation(label, max_loc):
     if label == "KUALITAS BAIK":
         return (
             "**✅ ANALISIS KUALITAS BAIK:**\n\n"
-            "Berdasarkan standar fisik, benih ini memiliki:\n"
-            "- Bentuk tubuh proporsional, simetris, dan tidak bengkok.\n"
-            "- Kelengkapan sirip yang utuh dan tidak cacat.\n"
-            "- Warna tubuh seragam dan cerah (sehat)."
+            "Benih memenuhi kriteria fisik: Tubuh proporsional, simetris, dan sirip lengkap."
         )
     else:
-        # Analisis area berdasarkan koordinat Y (0-224 piksel)
-        y = max_loc[1] 
-        if y < 80:
-            detail = "Ditemukan cacat/kelainan fisik pada **Sirip Punggung**."
-        elif 80 <= y <= 160:
-            detail = "**Bentuk Tubuh tidak ideal** (indikasi bengkok, tidak simetris, atau cacat tubuh)."
+        # Logika Jarak dari Pusat (Solusi untuk posisi ikan acak)
+        x_hit, y_hit = max_loc
+        center_x, center_y = 112, 112
+        distance = np.sqrt((x_hit - center_x)**2 + (y_hit - center_y)**2)
+        
+        # Jika titik merah jauh dari tengah (>70 piksel), kemungkinan besar Sirip/Ekor
+        if distance > 70:
+            detail = "Terdeteksi kelainan pada area **Sirip atau Ekor** (sobek/cacat fisik)."
         else:
-            detail = "Terdeteksi kelainan pada area **Ekor atau Sirip Bawah**."
+            detail = "Terdeteksi kelainan pada **Bentuk Tubuh** (bengkok atau tidak simetris)."
             
         return (
             f"**❌ ANALISIS KUALITAS BURUK:**\n\n"
             f"**Faktor Utama:** {detail}\n"
-            f"- Warna tubuh terlihat pucat atau tidak merata pada area yang ditandai merah."
+            f"- AI mendeteksi anomali pada area yang ditandai warna merah."
         )
 
 def save_to_google_sheets(new_data_df):
@@ -94,5 +83,5 @@ def save_to_google_sheets(new_data_df):
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
         conn.update(worksheet="Sheet1", data=updated_df)
-    except Exception as e:
-        st.error(f"Gagal mencatat data: {e}")
+    except Exception:
+        pass # Mengurangi lag saat otomatis
