@@ -62,16 +62,20 @@ def get_explanation(label, max_loc, heatmap_data, is_dry=False):
     else:
         reasons = []
         if is_dry:
-            reasons.append("Terdeteksi **Kondisi Kering/Pucat Ekstrem**.")
+            reasons.append("Terdeteksi **Ikan dalam kondisi Kering/Pucat Ekstrem**.")
         
         x_hit, y_hit = max_loc
-        center_x, center_y = 112, 112
+        center_x, center_y = 112, 112 # Tengah gambar
         distance = np.sqrt((x_hit - center_x)**2 + (y_hit - center_y)**2)
         
-        if distance > 60:
-            reasons.append("Terdeteksi **Kerusakan pada area Sirip atau Ekor**.")
+        # Logika Deteksi Lebar (Radius):
+        # Jika titik merah jauh dari tengah (>55), maka itu Sirip/Ekor (posisi apa pun)
+        if distance > 55:
+            reasons.append("Terdeteksi **Kerusakan/Sobek pada area Sirip atau Ekor**.")
+        
+        # Jika titik merah ada di area tengah, itu Tubuh
         if distance <= 75:
-            reasons.append("Bentuk **Tubuh tidak ideal** (bengkok atau tidak simetris).")
+            reasons.append("Bentuk **Tubuh tidak ideal** (indikasi bengkok atau tidak simetris).")
         
         penjelasan_final = "**❌ ANALISIS KUALITAS BURUK:**\n\n"
         for r in reasons:
