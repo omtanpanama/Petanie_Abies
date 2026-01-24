@@ -62,16 +62,16 @@ def get_explanation(label, max_loc, heatmap_data, is_dry=False):
     else:
         reasons = []
         if is_dry:
-            reasons.append("Terdeteksi **Ikan dalam kondisi Kering/Dehidrasi** (Warna pucat ekstrem).")
+            reasons.append("Terdeteksi **Kondisi Kering/Pucat Ekstrem**.")
         
         x_hit, y_hit = max_loc
         center_x, center_y = 112, 112
         distance = np.sqrt((x_hit - center_x)**2 + (y_hit - center_y)**2)
         
-        if distance > 55:
+        if distance > 60:
             reasons.append("Terdeteksi **Kerusakan pada area Sirip atau Ekor**.")
-        if distance <= 70:
-            reasons.append("Bentuk **Tubuh tidak ideal** (indikasi bengkok atau tidak simetris).")
+        if distance <= 75:
+            reasons.append("Bentuk **Tubuh tidak ideal** (bengkok atau tidak simetris).")
         
         penjelasan_final = "**❌ ANALISIS KUALITAS BURUK:**\n\n"
         for r in reasons:
