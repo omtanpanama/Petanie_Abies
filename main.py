@@ -35,14 +35,14 @@ if choice == "🏠 Halaman Utama":
             confidence = score if score > 0.5 else (1 - score)
             accuracy_pct = f"{confidence * 100:.2f}%"
             
-            # Grad-CAM mengembalikan 3 variabel sekarang
+            # PERBAIKAN: Menangkap 3 variabel agar tidak ValueError
             gradcam_img, max_loc, heatmap_raw = generate_gradcam(img, model)
             
             st.divider()
             col_img, col_txt = st.columns([1.3, 1])
             
             with col_img:
-                st.image(gradcam_img, use_container_width=True, caption=f"Visualisasi Grad-CAM (Akurasi: {accuracy_pct})")
+                st.image(gradcam_img, use_container_width=True, caption=f"Hasil Analisis Grad-CAM (Akurasi: {accuracy_pct})")
                 
             with col_txt:
                 st.write("### Diagnosa Pakar AI:")
@@ -52,7 +52,7 @@ if choice == "🏠 Halaman Utama":
                     st.success(f"## {label}")
                 
                 st.metric("Tingkat Keyakinan AI", accuracy_pct)
-                # Memanggil penjelasan dengan data heatmap lengkap
+                # Kirim 3 variabel ke fungsi penjelasan
                 st.info(get_explanation(label, max_loc, heatmap_raw))
                 
             if "last_file" not in st.session_state or st.session_state.last_file != file.name:
@@ -60,7 +60,6 @@ if choice == "🏠 Halaman Utama":
                 new_row = pd.DataFrame([{"Waktu": waktu, "Hasil": label, "Akurasi": accuracy_pct}])
                 save_to_google_sheets(new_row)
                 st.session_state.last_file = file.name
-                st.toast("Analisis selesai & data dicatat!")
 
 elif choice == "🛡️ Admin":
     if render_admin_login():
