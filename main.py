@@ -21,58 +21,66 @@ choice, sub_choice = show_navbar()
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
 if choice == "🏠 Halaman Utama":
-    st.title("🐟 Sistem Deteksi Kualitas Benih")
-    file = st.file_uploader("📤 Upload Foto Ikan", type=['jpg', 'jpeg', 'png'])
+    st.title("🐟 Deteksi Kualitas Benih Ikan")
+    file = st.file_uploader("📤 Unggah Foto Benih (JPG/PNG)", type=['jpg', 'jpeg', 'png'])
     
     if file:
         img = Image.open(file).convert("RGB")
-        
-        # Tempat untuk menampilkan foto yang bisa di-update
         image_placeholder = st.empty()
         
-        # Cek apakah sudah di-analisis
-        if "analyzed_file" not in st.session_state or st.session_state.analyzed_file != file.name:
-            image_placeholder.image(img, use_container_width=True, caption="Pratinjau Foto Asli")
-            st.session_state.is_analyzed = False
-        
-        if st.button("🔍 ANALISIS SEKARANG"):
-            with st.spinner("AI sedang menganalisis bagian tubuh ikan..."):
-                # Menghapus foto asli dari tampilan
-                image_placeholder.empty()
+        # Simpan state file agar tidak reload terus menerus
+        if "current_file" not in st.session_state or st.session_state.current_file != file.name:
+            image_placeholder.image(img, use_container_width=True, caption="Pratinjau Foto")
+            st.session_state.is_processed = False
+
+        if st.button("🔍 MULAI ANALISIS"):
+            with st.spinner("AI sedang menganalisis morfologi ikan..."):
+                image_placeholder.empty() # Sembunyikan foto asli
                 
-                # Proses Prediksi & Grad-CAM
+                # Menghitung Prediksi
                 processed = preprocess_image(img)
                 prediction = model.predict(processed, verbose=0)
-                score = float(prediction[0][0])
+                score = float(prediction[0][0]) # Output Sigmoid (0.0 - 1.0)
                 
-                gradcam_img, max_loc = generate_gradcam(img, model)
+                # Logika Sigmoid: 
+                # > 0.5 = Kurang Sehat (Mendekati 1.0)
+                # < 0.5 = Kualitas Baik (Mendekati 0.0)
                 label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
                 
-                # Menampilkan Hasil Visual Grad-CAM
-                st.subheader(f"Hasil Klasifikasi: {label}")
-                st.image(gradcam_img, use_container_width=True, caption="Visualisasi Grad-CAM (Area Merah = Fokus Utama AI)")
+                # Hitung Akurasi Keyakinan (Confidence Score)
+                confidence = score if score > 0.5 else (1 - score)
+                accuracy_text = f"{confidence * 100:.2f}%"
                 
-                # Menampilkan Teks Penjelasan Spesifik
-                penjelasan = get_explanation(label, max_loc)
-                if score > 0.5:
-                    st.error(penjelasan)
-                else:
-                    st.success(penjelasan)
+                # Jalankan Grad-CAM
+                gradcam_img, max_loc = generate_gradcam(img, model)
                 
-                # Simpan data
-                st.session_state.analyzed_file = file.name
-                waktu_sekarang = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                new_row = pd.DataFrame([{"Waktu": waktu_sekarang, "Hasil_Klasifikasi": label, "Sigmoid_Score": score}])
+                # TAMPILAN OUTPUT
+                st.divider()
+                col_res, col_img = st.columns([1, 1.2])
+                
+                with col_res:
+                    st.write("### Hasil Diagnosis Pakar AI:")
+                    if label == "KURANG SEHAT":
+                        st.error(f"## {label}")
+                    else:
+                        st.success(f"## {label}")
+                    
+                    st.metric("Tingkat Keyakinan Model", accuracy_text)
+                    st.markdown(get_explanation(label, max_loc))
+                    
+                with col_img:
+                    st.image(gradcam_img, use_container_width=True, caption="Visualisasi Deteksi (Explainable AI)")
+
+                # Simpan ke Database
+                st.session_state.current_file = file.name
+                waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_row = pd.DataFrame([{"Waktu": waktu, "Hasil": label, "Akurasi": accuracy_text}])
                 save_to_google_sheets(new_row)
-                st.toast("Analisis Selesai!")
+                st.toast("Data hasil analisis telah tersimpan.")
 
 elif choice == "🛡️ Admin":
     if render_admin_login():
         render_dashboard()
-
-elif choice == "👨‍🔬 Hasil Pakar":
-    st.title(f"👨‍🔬 Halaman {sub_choice}")
-    st.info("Data riwayat pakar sedang dalam tahap sinkronisasi.")
 
 st.markdown('</div>', unsafe_allow_html=True)
 render_footer()
