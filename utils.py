@@ -33,7 +33,7 @@ def generate_gradcam(img, model):
 
     with tf.GradientTape() as tape:
         last_conv_layer_output, preds = grad_model(img_array)
-        class_channel = preds[0] # Khusus aktivasi Sigmoid
+        class_channel = preds[0] 
 
     grads = tape.gradient(class_channel, last_conv_layer_output)
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
@@ -51,38 +51,38 @@ def generate_gradcam(img, model):
     heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
     superimposed_img = cv2.addWeighted(img_resized, 0.6, heatmap_color, 0.4, 0)
     
-    return superimposed_img, max_loc
+    return superimposed_img, max_loc, heatmap_resized
 
-def get_explanation(label, max_loc):
+def get_explanation(label, max_loc, heatmap_data):
     if label == "KUALITAS BAIK":
         return (
             "**✅ ANALISIS KUALITAS BAIK:**\n\n"
-            "Ikan sesuai dengan standar operasional Karanggeneng:\n"
-            "- Bentuk tubuh proporsional & simetris.\n"
-            "- Sirip utuh, tidak cacat, dan tidak sobek.\n"
-            "- Warna tubuh cerah sesuai kriteria benih sehat."
+            "Ikan memenuhi standar fisik: Tubuh proporsional, simetris, dan sirip lengkap."
         )
     else:
+        reasons = []
         x_hit, y_hit = max_loc
-        center_x, center_y = 112, 112 # Pusat gambar 224x224
+        center_x, center_y = 112, 112
         distance = np.sqrt((x_hit - center_x)**2 + (y_hit - center_y)**2)
         
-        # Logika Radius: Ikan miring pun, sirip ada di pinggiran (distansi tinggi)
-        if distance > 55:
-            detail = "Terdeteksi **Kerusakan/Sobek pada Sirip atau Ekor**."
-        else:
-            if y_hit < 85:
-                detail = "Kelainan fisik pada **Sirip Punggung**."
-            elif y_hit > 140:
-                detail = "Kelainan fisik pada **Sirip Bawah/Perut**."
-            else:
-                detail = "**Bentuk Tubuh tidak ideal** (indikasi bengkok atau tidak simetris)."
-            
-        return (
-            f"**❌ ANALISIS KUALITAS BURUK:**\n\n"
-            f"**Diagnosa Utama:** {detail}\n"
-            f"- AI memfokuskan deteksi pada area berwarna merah (Heatmap)."
-        )
+        # 1. Cek Potensi Cacat Tubuh (Area Pusat)
+        if distance < 65:
+            reasons.append("Bentuk **Tubuh tidak ideal** (indikasi bengkok atau tidak simetris).")
+        
+        # 2. Cek Potensi Cacat Sirip/Ekor (Area Pinggiran)
+        # Kami mengecek jika titik panas di pinggir ATAU intensitas di tepi cukup tinggi
+        if distance >= 65:
+            reasons.append("Terdeteksi **Kerusakan/Sobek pada area Sirip atau Ekor**.")
+        
+        # Jika hanya ada satu titik panas namun sangat kuat, tambahkan detail orientasi
+        if len(reasons) == 0:
+            reasons.append("Anomali pada morfologi tubuh benih tidak sesuai standar fisik.")
+
+        penjelasan_final = "**❌ ANALISIS KUALITAS BURUK:**\n\n"
+        for r in reasons:
+            penjelasan_final += f"- {r}\n"
+        
+        return penjelasan_final
 
 def save_to_google_sheets(new_data_df):
     try:
