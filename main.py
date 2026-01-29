@@ -84,8 +84,7 @@ if choice == "🏠 Halaman Utama":
                     new_row = pd.DataFrame([{
                         "Waktu": waktu, 
                         "Hasil": label, 
-                        "Keyakinan": accuracy_pct,
-                        "File": file.name
+                        "Keyakinan": accuracy_pct
                     }])
                     save_to_google_sheets(new_row)
                     st.session_state.last_processed_file = file.name
