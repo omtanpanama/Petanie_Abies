@@ -1,7 +1,7 @@
 import streamlit as st
 
 def render_catatan_petani():
-    # Header dengan Background Warna Hijau Alam (Petani)
+    # CSS Custom untuk estetika Dashboard
     st.markdown("""
         <style>
         .farmer-header {
@@ -11,6 +11,7 @@ def render_catatan_petani():
             color: white;
             text-align: center;
             margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
         .bio-card {
             background-color: #F0FDFA;
@@ -18,6 +19,7 @@ def render_catatan_petani():
             border-radius: 12px;
             border-left: 8px solid #14B8A6;
             margin-bottom: 20px;
+            box-shadow: 2px 2px 10px rgba(0,0,0,0.02);
         }
         .observation-box {
             background-color: #ffffff;
@@ -25,11 +27,19 @@ def render_catatan_petani():
             border: 1px solid #E5E7EB;
             border-radius: 10px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .img-caption {
+            font-size: 14px;
+            color: #64748B;
+            text-align: center;
+            font-style: italic;
+            margin-top: 5px;
         }
         </style>
         <div class="farmer-header">
             <h1 style="margin:0; color:white;">👨‍🌾 Catatan & Observasi Lapangan</h1>
-            <p style="margin:5px 0 0 0; opacity: 0.9;">Dokumentasi Pengumpulan Dataset & Wawancara Pakar Lokal</p>
+            <p style="margin:5px 0 0 0; opacity: 0.9;">Dokumentasi Wawancara & Pengumpulan Dataset Dataset</p>
         </div>
     """, unsafe_allow_html=True)
 
@@ -38,63 +48,58 @@ def render_catatan_petani():
     col_bio, col_desc = st.columns([1, 2])
     
     with col_bio:
-        # Ganti dengan path foto Bapak Heru jika ada, atau gunakan icon
-        st.markdown("""
-            <div style="text-align: center; padding: 20px; background: #f3f4f6; border-radius: 50%;">
-                <span style="font-size: 100px;">👨‍🌾</span>
-            </div>
-        """, unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center;'><b>Bapak Heru</b></p>", unsafe_allow_html=True)
+        # Menggunakan foto profil Pak Heru yang baru
+        st.image("profil_pak_heru.png", use_container_width=True)
+        st.markdown("<p style='text-align:center; font-weight:bold;'>Bapak Heru</p>", unsafe_allow_html=True)
 
     with col_desc:
         st.markdown("""
             <div class="bio-card">
-                <p><b>Pemilik Toko Barokah, Karanggeneng</b></p>
-                <p>Beliau adalah praktisi pembenihan ikan dengan pengalaman lebih dari <b>22 tahun</b> (sejak 2004). 
-                Keahliannya mencakup budidaya ikan mas, nener, dan mujair.</p>
-                <p><i>"Pengalaman lapangan Bapak Heru menjadi kunci dalam penentuan label kualitas dataset Petani_Abies."</i></p>
+                <p style="font-size: 18px; color: #0D9488; font-weight: bold;">Pemilik Toko Barokah, Karanggeneng</p>
+                <p>Beliau adalah praktisi berpengalaman yang telah menekuni dunia pembenihan berbagai jenis ikan selama <b>22 tahun</b> (sejak 2004).</p>
+                <p>Wawancara dipilih sebagai metode utama karena informasi yang diberikan dianggap sangat <b>valid, akurat, dan efektif</b> berdasarkan pengalaman panjang beliau di lapangan.</p>
+                <p><i>"Wawasan beliau mengenai ciri fisik dan faktor lingkungan menjadi dasar utama pemberian label pada dataset kami."</i></p>
             </div>
         """, unsafe_allow_html=True)
 
     st.divider()
 
     # --- BAGIAN 2: METODE & HASIL OBSERVASI ---
-    st.subheader("🔍 Metodologi Pengumpulan Data")
+    st.subheader("🔍 Metodologi & Dataset")
     
     col_text, col_stats = st.columns([1.5, 1])
     
     with col_text:
         st.markdown("""
-        Penelitian ini menggunakan metode **Wawancara Langsung** dan **Observasi Lapangan**. 
-        Informasi dari praktisi dikombinasikan dengan standar **BSN (Badan Standardisasi Nasional)** untuk memastikan akurasi label pada model AI.
+        **Langkah Awal Penelitian:**
+        Penulis melakukan wawancara langsung dan observasi di objek penelitian untuk memperoleh data primer. 
         
-        **Poin Utama Wawancara:**
-        * Identifikasi ciri fisik benih unggul vs benih cacat.
-        * Pengaruh faktor lingkungan terhadap kesehatan benih.
-        * Validasi kategori dataset berdasarkan kebiasaan petani lokal.
+        **Hasil Temuan Lapangan:**
+        * Informasi dari Bapak Heru digunakan sebagai tambahan dasar pemberian label kualitas.
+        * Penentuan kategori benih juga merujuk pada ciri-ciri morfologi dari **BSN (Badan Standardisasi Nasional)**.
+        * Data awal yang diperoleh mencakup variasi benih ikan mas, nener, dan mujair.
         """)
 
     with col_stats:
         st.markdown("<div class='observation-box'>", unsafe_allow_html=True)
-        st.write("**Total Dataset Terkumpul:**")
-        st.metric("Kualitas Baik", "1.500 Gambar", delta="Valid")
-        st.metric("Kurang Sehat", "1.500 Gambar", delta="Valid", delta_color="inverse")
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.write("📊 **Dataset Terkumpul**")
+        st.metric("Kualitas Baik", "1.500 Gambar")
+        st.metric("Kurang Sehat", "1.500 Gambar")
+        st.markdown("<small>Dataset divalidasi oleh pengalaman ahli</small></div>", unsafe_allow_html=True)
 
     st.divider()
 
     # --- BAGIAN 3: GALERI PENELITIAN ---
     st.subheader("📸 Galeri Dokumentasi Lapangan")
-    st.write("Representasi visual benih ikan mas yang diambil selama proses penelitian:")
+    st.write("Contoh foto benih ikan mas yang digunakan dalam penelitian berdasarkan kategori kualitas:")
 
-    # Ganti 'gambar_penelitian_1.jpg' dengan file asli di GitHub kamu
     c1, c2 = st.columns(2)
     with c1:
-        # Masukkan gambar pas penelitian di sini
-        st.image("https://via.placeholder.com/500x350?text=Foto+Penelitian+1", 
-                 caption="Proses Pengambilan Sampel di Toko Barokah", use_container_width=True)
+        st.image("gambar_lapangan1.jpeg", use_container_width=True)
+        st.markdown('<p class="img-caption">Dokumentasi pengambilan sampel dataset (1)</p>', unsafe_allow_html=True)
+        
     with c2:
-        st.image("https://via.placeholder.com/500x350?text=Foto+Penelitian+2", 
-                 caption="Klasifikasi Fisik Benih Bersama Bapak Heru", use_container_width=True)
+        st.image("gambar_lapangan2.jpeg", use_container_width=True)
+        st.markdown('<p class="img-caption">Dokumentasi pengambilan sampel dataset (2)</p>', unsafe_allow_html=True)
 
-    st.info("💡 Semua foto diambil menggunakan pencahayaan alami untuk menyesuaikan kondisi lapangan petani.")
+    st.info("💡 Semua foto mewakili kategori benih berkualitas baik dan tidak berkualitas berdasarkan pengalaman lapangan dan standar BSN.")
