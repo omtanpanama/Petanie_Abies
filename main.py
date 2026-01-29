@@ -9,6 +9,7 @@ from styles import apply_custom_css, render_footer
 from utils import load_model_cloud, preprocess_image, save_to_google_sheets, generate_gradcam, get_explanation
 from admin_page import show_navbar, render_admin_login, render_dashboard
 from hasil_pakar_dosen import render_pakar_dosen
+from catatan_petani import render_catatan_petani
 
 # 1. Konfigurasi Awal
 st.set_page_config(page_title="Petani_Abies AI", layout="wide", page_icon="🐟")
@@ -96,8 +97,7 @@ elif choice == "👨‍🔬 Hasil Pakar":
     if sub_choice == "Pakar Dosen":
         render_pakar_dosen() 
     elif sub_choice == "Petani":
-        st.title("👨‍🌾 Catatan Petani")
-        st.write("Halaman untuk dokumentasi petani lokal.")
+        render_catatan_petani()
     elif sub_choice == "Dinas Perikanan":
         st.title("🏛️ Dinas Perikanan")
         st.write("Informasi dari Dinas Perikanan.")
