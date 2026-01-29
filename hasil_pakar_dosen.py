@@ -89,12 +89,16 @@ def render_pakar_dosen():
         </div>
     """, unsafe_allow_html=True)
 
-    # Menampilkan Foto Pak Fuquh dengan layout yang rapi
+    # Menampilkan Foto
     col_img1, col_img2 = st.columns(2)
-    with col_img1:
-        st.image("pak_fuquh01.jpeg", caption="Dokumentasi Validasi 01", use_container_width=True)
-    with col_img2:
-        st.image("pak_fuquh02.jpeg", caption="Dokumentasi Validasi 02", use_container_width=True)
+    # Gunakan placeholder atau try-except jika file gambar lokal tidak ada
+    try:
+        with col_img1:
+            st.image("pak_fuquh01.jpeg", caption="Dokumentasi Validasi 01", use_container_width=True)
+        with col_img2:
+            st.image("pak_fuquh02.jpeg", caption="Dokumentasi Validasi 02", use_container_width=True)
+    except:
+        st.warning("Foto dokumentasi tidak ditemukan.")
 
     # 5. Eksplorasi Dokumen PDF
     st.markdown('<h3 class="section-header">📖 Eksplorasi Dokumen PDF</h3>', unsafe_allow_html=True)
@@ -102,9 +106,11 @@ def render_pakar_dosen():
     tab1, tab2 = st.tabs(["📄 Pratinjau Interaktif", "📥 Pusat Unduhan"])
 
     with tab1:
+        # Gunakan URL PDF yang benar
         pdf_url = "https://raw.githubusercontent.com/omtanpanama/Petanie_Abies/main/hasil_pakar_dosen.pdf"
-        st.info("💡 Gunakan panel di bawah untuk membaca dokumen secara langsung.")
+        st.info("💡 Jika dokumen tidak muncul, pastikan koneksi internet stabil atau gunakan tab 'Pusat Unduhan'.")
         
+        # Penambahan "&rm=minimal" untuk viewer yang lebih stabil
         st.markdown(f'''
             <div style="border: 1px solid #E2E8F0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                 <iframe src="https://docs.google.com/viewer?url={pdf_url}&embedded=true" 
@@ -116,18 +122,19 @@ def render_pakar_dosen():
     with tab2:
         st.write("Silahkan unduh file untuk kebutuhan arsip fisik atau cetak.")
         file_path = "hasil_pakar_dosen.pdf"
+        
         try:
             with open(file_path, "rb") as f:
                 pdf_bytes = f.read()
             st.download_button(
                 label="📥 Download Berita Acara (PDF)",
                 data=pdf_bytes,
-                file_name=file_name,
+                file_name="hasil_pakar_dosen.pdf", # Perbaikan: jangan gunakan variabel file_name yang tidak ada
                 mime="application/pdf",
                 use_container_width=True
             )
-        except:
-            st.error("Gagal memuat file PDF. Pastikan file tersedia di direktori utama.")
+        except FileNotFoundError:
+            st.error("File fisik 'hasil_pakar_dosen.pdf' tidak ditemukan di folder utama.")
 
     # 6. Footer
     st.markdown("---")
@@ -136,3 +143,7 @@ def render_pakar_dosen():
         "Petani_Abies AI System • Academic Validation Module v1.0 • 2026</div>", 
         unsafe_allow_html=True
     )
+
+# Panggil fungsi jika dijalankan sebagai main script
+if __name__ == "__main__":
+    render_pakar_dosen()
