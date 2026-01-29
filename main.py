@@ -8,6 +8,7 @@ import numpy as np
 from styles import apply_custom_css, render_footer
 from utils import load_model_cloud, preprocess_image, save_to_google_sheets, generate_gradcam, get_explanation
 from admin_page import show_navbar, render_admin_login, render_dashboard
+from admin_page import show_navbar, render_admin_login, render_dashboard, render_pakar_dosen
 
 # 1. Konfigurasi Awal
 st.set_page_config(page_title="Petani_Abies AI", layout="wide", page_icon="🐟")
