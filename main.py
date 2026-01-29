@@ -91,6 +91,16 @@ if choice == "🏠 Halaman Utama":
                     st.session_state.last_processed_file = file.name
                 except Exception as e:
                     st.sidebar.error(f"Gagal simpan log: {e}")
+elif choice == "👨‍🔬 Hasil Pakar":
+    # --- DI SINI TEMPATNYA ---
+    if sub_choice == "Pakar Dosen":
+        render_pakar_dosen() 
+    elif sub_choice == "Petani":
+        st.title("👨‍🌾 Catatan Petani")
+        st.write("Halaman untuk dokumentasi petani lokal.")
+    elif sub_choice == "Dinas Perikanan":
+        st.title("🏛️ Dinas Perikanan")
+        st.write("Informasi dari Dinas Perikanan.")
 
 # --- HALAMAN ADMIN ---
 elif choice == "🛡️ Admin":
