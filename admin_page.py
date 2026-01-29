@@ -3,6 +3,9 @@ import pandas as pd
 from streamlit_gsheets import GSheetsConnection
 import plotly.express as px
 
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Sistem Monitoring Ikan", layout="wide")
+
 def show_navbar():
     with st.sidebar:
         st.markdown("### 🧭 Navigasi")
@@ -13,11 +16,12 @@ def show_navbar():
         return choice, sub_choice
 
 def render_admin_login():
-    st.title("🔐 Panel Akses Admin")
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
 
     if not st.session_state.logged_in:
+        # Judul ini HANYA muncul jika belum login
+        st.title("🔐 Panel Akses Admin")
         with st.container():
             pwd = st.text_input("Masukkan Sandi Admin", type="password")
             col1, col2 = st.columns([1, 1])
@@ -28,11 +32,12 @@ def render_admin_login():
                 else:
                     st.error("Sandi Salah!")
             if col2.button("Batal"):
-                st.info("Kembali ke Halaman Utama")
+                st.info("Silahkan pilih navigasi lain di samping.")
         return False
     return True
 
 def render_dashboard():
+    # Judul ini yang akan muncul SETELAH login berhasil
     st.title("📊 Pusat Kendali & Analisis Data")
     
     try:
@@ -50,7 +55,10 @@ def render_dashboard():
             m1.metric("Total Scan", f"{total_data}")
             m2.metric("Kualitas Baik", f"{baik}", delta=f"{sehat_rate:.1f}%")
             m3.metric("Kurang Sehat", f"{buruk}", delta_color="inverse")
-            m4.metric("Akurasi Terakhir", df['Keyakinan'].iloc[-1] if 'Keyakinan' in df.columns else "N/A")
+            
+            # Cek kolom Keyakinan agar tidak error jika tidak ada
+            acc_val = df['Keyakinan'].iloc[-1] if 'Keyakinan' in df.columns else "N/A"
+            m4.metric("Akurasi Terakhir", acc_val)
 
             st.markdown("---")
 
@@ -76,7 +84,6 @@ def render_dashboard():
             st.subheader("📑 Riwayat Data Lengkap")
             st.dataframe(df, use_container_width=True)
             
-            # Tombol Aksi di Bawah
             ca1, ca2 = st.columns([1, 1])
             with ca1:
                 csv = df.to_csv(index=False).encode('utf-8')
@@ -85,8 +92,27 @@ def render_dashboard():
                 if st.button("🚪 Keluar Panel Admin"):
                     st.session_state.logged_in = False
                     st.rerun()
-
         else:
             st.info("Data belum tersedia di Google Sheets.")
     except Exception as e:
         st.error(f"Gagal memuat dashboard: {e}")
+
+# --- LOGIKA APLIKASI UTAMA ---
+def main():
+    choice, sub_choice = show_navbar()
+
+    if choice == "🏠 Halaman Utama":
+        st.title("Selamat Datang di Sistem Monitoring Ikan")
+        st.write("Silahkan gunakan navigasi di sebelah kiri untuk mengakses data.")
+
+    elif choice == "👨‍🔬 Hasil Pakar":
+        st.title(f"Hasil Analisis: {sub_choice}")
+        st.write(f"Menampilkan data khusus untuk kategori {sub_choice}...")
+        # Tambahkan logika filter data berdasarkan sub_choice di sini
+
+    elif choice == "🛡️ Admin":
+        if render_admin_login():
+            render_dashboard()
+
+if __name__ == "__main__":
+    main()
