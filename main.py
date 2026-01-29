@@ -35,9 +35,8 @@ if choice == "🏠 Halaman Utama":
         img = Image.open(file).convert("RGB")
         img_np = np.array(img)
         
-        with st.spinner("🔍 AI sedang memvalidasi objek dan memindai fisik ikan..."):
+        with st.spinner("🔍 AI sedang memindai fisik ikan..."):
             # A. Ekstraksi Fitur Dasar
-            std_dev = np.std(img_np)
             mean_val = np.mean(img_np)
             
             # B. Prediksi Model
@@ -45,65 +44,53 @@ if choice == "🏠 Halaman Utama":
             prediction = model.predict(processed, verbose=0)
             score = float(prediction[0][0])
             
-            # C. Logika Validasi Objek (Anti-Spam/Bukan Ikan)
-            is_coding_screen = (std_dev > 60 and mean_val < 100) # Ciri terminal/code
-            is_ambiguous = (0.45 < score < 0.55)               # Model ragu-ragu
-            is_too_flat = (std_dev < 12)                       # Polos (tembok/kertas)
+            # C. Klasifikasi Hasil (Langsung tanpa validasi anti-spam)
+            label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
+            confidence = score if score > 0.5 else (1 - score)
+            accuracy_pct = f"{confidence * 100:.2f}%"
             
-            if is_coding_screen or is_too_flat or is_ambiguous:
-                st.warning("⚠️ **Sistem mendeteksi ini bukan foto ikan.**")
-                st.info("Pastikan Anda mengunggah foto benih ikan yang jelas (bukan screenshot, teks, atau objek polos).")
-                st.image(img, caption="Objek Terdeteksi Tidak Valid", use_container_width=True)
+            # Cek Kondisi Ikan Pucat/Kering
+            is_dry = True if mean_val > 200 else False
             
-            else:
-                # D. Klasifikasi Hasil
-                label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
-                confidence = score if score > 0.5 else (1 - score)
-                accuracy_pct = f"{confidence * 100:.2f}%"
+            # D. Visualisasi Grad-CAM (Heatmap)
+            gradcam_img, max_loc, heatmap_raw = generate_gradcam(img, model)
+            
+            st.divider()
+            
+            # Tata Letak Hasil
+            col_img, col_txt = st.columns([1.3, 1])
+            
+            with col_img:
+                st.image(gradcam_img, use_container_width=True, 
+                         caption=f"Visualisasi Grad-CAM (Keyakinan: {accuracy_pct})")
                 
-                # Cek Kondisi Ikan Pucat/Kering
-                is_dry = True if mean_val > 200 else False
+            with col_txt:
+                st.write("### 🩺 Diagnosa Pakar AI:")
+                if label == "KURANG SEHAT":
+                    st.error(f"## {label}")
+                else:
+                    st.success(f"## {label}")
                 
-                # E. Visualisasi Grad-CAM (Heatmap)
-                gradcam_img, max_loc, heatmap_raw = generate_gradcam(img, model)
+                st.metric("Tingkat Keyakinan AI", accuracy_pct)
                 
-                st.divider()
-                
-                # Tata Letak Hasil
-                col_img, col_txt = st.columns([1.3, 1])
-                
-                with col_img:
-                    st.image(gradcam_img, use_container_width=True, 
-                             caption=f"Visualisasi Grad-CAM (Keyakinan: {accuracy_pct})")
-                    
-                with col_txt:
-                    st.write("### 🩺 Diagnosa Pakar AI:")
-                    if label == "KURANG SEHAT":
-                        st.error(f"## {label}")
-                    else:
-                        st.success(f"## {label}")
-                    
-                    st.metric("Tingkat Keyakinan AI", accuracy_pct)
-                    
-                    # Penjelasan dari AI
-                    explanation = get_explanation(label, max_loc, heatmap_raw, is_dry)
-                    st.info(explanation)
-                
-                # F. Penyimpanan Data Otomatis ke Cloud
-                # Menggunakan session_state agar tidak double-save saat user scroll/interaksi
-                if "last_processed_file" not in st.session_state or st.session_state.last_processed_file != file.name:
-                    try:
-                        waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        new_row = pd.DataFrame([{
-                            "Waktu": waktu, 
-                            "Hasil": label, 
-                            "Keyakinan": accuracy_pct,
-                            "File": file.name
-                        }])
-                        save_to_google_sheets(new_row)
-                        st.session_state.last_processed_file = file.name
-                    except Exception as e:
-                        st.sidebar.error(f"Gagal simpan log: {e}")
+                # Penjelasan dari AI
+                explanation = get_explanation(label, max_loc, heatmap_raw, is_dry)
+                st.info(explanation)
+            
+            # E. Penyimpanan Data Otomatis ke Cloud
+            if "last_processed_file" not in st.session_state or st.session_state.last_processed_file != file.name:
+                try:
+                    waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    new_row = pd.DataFrame([{
+                        "Waktu": waktu, 
+                        "Hasil": label, 
+                        "Keyakinan": accuracy_pct,
+                        "File": file.name
+                    }])
+                    save_to_google_sheets(new_row)
+                    st.session_state.last_processed_file = file.name
+                except Exception as e:
+                    st.sidebar.error(f"Gagal simpan log: {e}")
 
 # --- HALAMAN ADMIN ---
 elif choice == "🛡️ Admin":
