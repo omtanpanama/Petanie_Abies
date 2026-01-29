@@ -29,59 +29,72 @@ if choice == "🏠 Halaman Utama":
         img_np = np.array(img)
         
         with st.spinner("🔍 AI sedang memvalidasi objek dan memindai fisik ikan..."):
-            # Filter Bukan Ikan berdasarkan variasi tekstur (Standard Deviation)
+            # --- 1. HITUNG STATISTIK GAMBAR (Agar tidak NameError) ---
             std_dev = np.std(img_np)
+            mean_val = np.mean(img_np) 
+            
             processed = preprocess_image(img)
             prediction = model.predict(processed, verbose=0)
             score = float(prediction[0][0])
             
-            # Deteksi jika objek bukan ikan (Threshold Keyakinan & Tekstur)
-            is_coding_screen = (std_dev > 60 and mean_val < 100) # Ciri khas layar terminal/coding
-            is_ambiguous = (0.45 < score < 0.55)
-            is_too_flat = (std_dev < 12) # Terlalu polos (tembok/kertas)
+            # --- 2. DETEKSI JIKA BUKAN IKAN (Filter Layar/Teks/Screenshot) ---
+            is_coding_screen = (std_dev > 50 and mean_val < 80) 
+            is_ambiguous = (0.48 < score < 0.52)
+            is_too_flat = (std_dev < 10) 
             
             if is_coding_screen or is_too_flat or is_ambiguous:
-                st.warning("⚠️ **Sistem mendeteksi ini bukan foto ikan.**")
-                st.info("Pastikan Anda mengunggah foto benih ikan yang jelas (bukan screenshot atau teks).")
+                st.warning("⚠️ **Mohon maaf mas, ini sepertinya bukan foto ikan.**")
+                st.info("Pastikan Anda mengunggah foto benih ikan yang asli (bukan screenshot terminal atau teks).")
                 st.image(img, caption="Objek Terdeteksi Bukan Ikan", use_container_width=True)
-            #else:
-            #if (0.47 < score < 0.53) or (std_dev < 15):
-             #   st.warning("⚠️ **Mohon maaf mas, ini sepertinya bukan foto ikan.** Silakan unggah foto benih ikan yang asli.")
-              #  st.image(img, use_container_width=True)
-            #else:
-                label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
-                confidence = score if score > 0.5 else (1 - score)
-                accuracy_pct = f"{confidence * 100:.2f}%"
+                st.stop() # Berhenti di sini jika bukan ikan
+            
+            # --- 3. PROSES DIAGNOSA (Jika lolos filter) ---
+            label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
+            confidence = score if score > 0.5 else (1 - score)
+            accuracy_pct = f"{confidence * 100:.2f}%"
+            
+            # Cek Kondisi Ikan Kering (Pucat ekstrem)
+            is_dry = True if mean_val > 200 else False
+            
+            # Visualisasi Grad-CAM
+            gradcam_img, max_loc, heatmap_raw = generate_gradcam(img, model)
+            
+            st.divider()
+            
+            # --- 4. TATA LETAK BARU: FOTO KIRI & KANAN ---
+            st.subheader("📸 Perbandingan Analisis Visual")
+            col_img_asli, col_img_gradcam = st.columns(2)
+            
+            with col_img_asli:
+                st.image(img, use_container_width=True, caption="Foto Asli")
                 
-                # Cek Kondisi Ikan Kering (Pucat ekstrem)
-                is_dry = True if np.mean(img_np) > 200 else False
+            with col_img_gradcam:
+                st.image(gradcam_img, use_container_width=True, caption=f"Fokus AI (Akurasi: {accuracy_pct})")
                 
-                # Visualisasi Grad-CAM
-                gradcam_img, max_loc, heatmap_raw = generate_gradcam(img, model)
+            st.divider()
+
+            # --- 5. DETAIL HASIL DIAGNOSA ---
+            col_hasil, col_penjelasan = st.columns([1, 1.5])
+            
+            with col_hasil:
+                st.write("### Diagnosa Pakar AI:")
+                if label == "KURANG SEHAT":
+                    st.error(f"## {label}")
+                else:
+                    st.success(f"## {label}")
                 
-                st.divider()
-                # TATA LETAK: col_img (KIRI), col_txt (KANAN)
-                col_img, col_txt = st.columns([1.3, 1])
+                st.metric("Tingkat Keyakinan AI", accuracy_pct)
                 
-                with col_img:
-                    st.image(gradcam_img, use_container_width=True, caption=f"Visualisasi Grad-CAM (Akurasi: {accuracy_pct})")
-                    
-                with col_txt:
-                    st.write("### Diagnosa Pakar AI:")
-                    if label == "KURANG SEHAT":
-                        st.error(f"## {label}")
-                    else:
-                        st.success(f"## {label}")
-                    
-                    st.metric("Tingkat Keyakinan AI", accuracy_pct)
-                    st.info(get_explanation(label, max_loc, heatmap_raw, is_dry))
-                    
-                # Simpan otomatis
-                if "last_file" not in st.session_state or st.session_state.last_file != file.name:
-                    waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    new_row = pd.DataFrame([{"Waktu": waktu, "Hasil": label, "Keyakinan": accuracy_pct}])
-                    save_to_google_sheets(new_row)
-                    st.session_state.last_file = file.name
+            with col_penjelasan:
+                st.write("### Analisis Penyakit/Kondisi:")
+                st.info(get_explanation(label, max_loc, heatmap_raw, is_dry))
+                
+            # --- 6. SIMPAN OTOMATIS KE DATABASE ---
+            if "last_file" not in st.session_state or st.session_state.last_file != file.name:
+                waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                new_row = pd.DataFrame([{"Waktu": waktu, "Hasil": label, "Keyakinan": accuracy_pct}])
+                save_to_google_sheets(new_row)
+                st.session_state.last_file = file.name
 
 elif choice == "🛡️ Admin":
     if render_admin_login():
