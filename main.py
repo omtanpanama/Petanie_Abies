@@ -36,10 +36,19 @@ if choice == "🏠 Halaman Utama":
             score = float(prediction[0][0])
             
             # Deteksi jika objek bukan ikan (Threshold Keyakinan & Tekstur)
-            if (0.47 < score < 0.53) or (std_dev < 15):
-                st.warning("⚠️ **Mohon maaf mas, ini sepertinya bukan foto ikan.** Silakan unggah foto benih ikan yang asli.")
-                st.image(img, use_container_width=True)
-            else:
+            is_coding_screen = (std_dev > 60 and mean_val < 100) # Ciri khas layar terminal/coding
+            is_ambiguous = (0.45 < score < 0.55)
+            is_too_flat = (std_dev < 12) # Terlalu polos (tembok/kertas)
+            
+            if is_coding_screen or is_too_flat or is_ambiguous:
+                st.warning("⚠️ **Sistem mendeteksi ini bukan foto ikan.**")
+                st.info("Pastikan Anda mengunggah foto benih ikan yang jelas (bukan screenshot atau teks).")
+                st.image(img, caption="Objek Terdeteksi Bukan Ikan", use_container_width=True)
+            #else:
+            #if (0.47 < score < 0.53) or (std_dev < 15):
+             #   st.warning("⚠️ **Mohon maaf mas, ini sepertinya bukan foto ikan.** Silakan unggah foto benih ikan yang asli.")
+              #  st.image(img, use_container_width=True)
+            #else:
                 label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
                 confidence = score if score > 0.5 else (1 - score)
                 accuracy_pct = f"{confidence * 100:.2f}%"
