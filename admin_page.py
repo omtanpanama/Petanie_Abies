@@ -1,74 +1,65 @@
 import streamlit as st
 import pandas as pd
 from streamlit_gsheets import GSheetsConnection
+import plotly.express as px
 
-# Gunakan plotly untuk grafik yang lebih interaktif dan cantik
-import plotly.express as px 
+def show_navbar():
+    with st.sidebar:
+        st.markdown("### 🧭 Navigasi")
+        choice = st.selectbox("Pilih Halaman:", ["🏠 Halaman Utama", "👨‍🔬 Hasil Pakar", "🛡️ Admin"])
+        sub_choice = None
+        if choice == "👨‍🔬 Hasil Pakar":
+            sub_choice = st.selectbox("Pilih Kategori:", ["Pakar Dosen", "Petani", "Dinas Perikanan"])
+        return choice, sub_choice
+
+def render_admin_login():
+    st.title("🔐 Panel Akses Admin")
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        pwd = st.text_input("Masukkan Sandi Admin", type="password")
+        col1, col2 = st.columns(2)
+        if col1.button("Login Sekarang"):
+            if pwd == "admin123":
+                st.session_state.logged_in = True
+                st.rerun()
+            else:
+                st.error("Sandi Salah!")
+        return False
+    return True
 
 def render_dashboard():
-    st.title("📊 Panel Dashboard Admin")
-    st.markdown("---")
-    
+    st.title("📊 Dashboard Laporan Analisis")
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
         df = conn.read(worksheet="Sheet1", ttl=0)
         
         if not df.empty:
-            # 1. BARIS RINGKASAN (METRICS)
-            total_scan = len(df)
-            baik = len(df[df['Hasil'] == "KUALITAS BAIK"])
-            buruk = len(df[df['Hasil'] == "KURANG SEHAT"])
+            # --- BAGIAN GRAFIK ---
+            c1, c2 = st.columns([1, 1])
+            with c1:
+                st.write("### Ringkasan Status")
+                # Grafik batang kualitas
+                fig = px.bar(df['Hasil'].value_counts().reset_index(), 
+                             x='Hasil', y='count', color='Hasil',
+                             color_discrete_map={'KUALITAS BAIK': '#10b981', 'KURANG SEHAT': '#ef4444'})
+                st.plotly_chart(fig, use_container_width=True)
             
-            m1, m2, m3 = st.columns(3)
-            m1.metric("Total Scan", f"{total_scan} Ikan")
-            m2.metric("Kualitas Baik", baik, delta_color="normal")
-            m3.metric("Kurang Sehat", buruk, delta="-", delta_color="inverse")
-            
-            st.markdown("---")
-            
-            # 2. BAGIAN GRAFIK
-            col_chart1, col_chart2 = st.columns([1.5, 1])
-            
-            with col_chart1:
-                st.subheader("📈 Tren Hasil Analisis")
-                # Grafik Batang Berwarna
-                fig_bar = px.bar(
-                    df['Hasil'].value_counts().reset_index(), 
-                    x='Hasil', 
-                    y='count',
-                    color='Hasil',
-                    color_discrete_map={'KUALITAS BAIK': '#10b981', 'KURANG SEHAT': '#ef4444'},
-                    labels={'count': 'Jumlah', 'Hasil': 'Status'},
-                    template="plotly_white"
-                )
-                st.plotly_chart(fig_bar, use_container_width=True)
-
-            with col_chart2:
-                st.subheader("🍩 Persentase")
-                # Grafik Lingkaran (Donut)
-                fig_pie = px.pie(
-                    df, 
-                    names='Hasil', 
-                    hole=0.4,
-                    color='Hasil',
-                    color_discrete_map={'KUALITAS BAIK': '#10b981', 'KURANG SEHAT': '#ef4444'}
-                )
-                fig_pie.update_traces(textinfo='percent+label')
+            with c2:
+                st.write("### Persentase")
+                # Grafik lingkaran
+                fig_pie = px.pie(df, names='Hasil', hole=0.3,
+                                 color='Hasil', color_discrete_map={'KUALITAS BAIK': '#10b981', 'KURANG SEHAT': '#ef4444'})
                 st.plotly_chart(fig_pie, use_container_width=True)
 
-            st.markdown("---")
-
-            # 3. TABEL DATA
-            st.subheader("📑 Data Log Lengkap")
+            st.divider()
             st.dataframe(df, use_container_width=True)
             
-            # Tombol Logout diletakkan di sidebar atau bawah
-            if st.button("🚪 Keluar dari Panel Admin"):
+            if st.button("Logout Admin"):
                 st.session_state.logged_in = False
                 st.rerun()
-                
         else:
-            st.info("💡 Belum ada data di Google Sheets untuk dianalisis.")
-            
+            st.info("Data belum tersedia di Google Sheets.")
     except Exception as e:
-        st.error(f"❌ Terjadi kesalahan saat memuat dashboard: {e}")
+        st.error(f"Gagal memuat data: {e}")
