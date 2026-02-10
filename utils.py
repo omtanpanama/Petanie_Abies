@@ -55,34 +55,28 @@ def generate_gradcam(img, model):
 
 def get_explanation(label, max_loc, heatmap_data, is_dry=False):
     if label == "KUALITAS BAIK":
-        return (
-            "**✅ ANALISIS KUALITAS BAIK:**\n\n"
-            "Ikan sesuai standar fisik: Tubuh proporsional, simetris, dan sirip lengkap."
-        )
+        # Kalimat yang positif dan menenangkan
+        return "Struktur tubuh simetris, fisik proporsional, dan sirip utuh."
+    
     else:
         reasons = []
         if is_dry:
-            reasons.append("Terdeteksi **Ikan dalam kondisi Kering/Pucat Ekstrem**.")
+            reasons.append("Warna tubuh pucat atau kondisi kering")
         
         x_hit, y_hit = max_loc
-        center_x, center_y = 112, 112 # Tengah gambar
+        center_x, center_y = 112, 112
         distance = np.sqrt((x_hit - center_x)**2 + (y_hit - center_y)**2)
         
-        # Logika Deteksi Lebar (Radius):
-        # Jika titik merah jauh dari tengah (>55), maka itu Sirip/Ekor (posisi apa pun)
+        # Penjelasan yang lebih jelas titik masalahnya
         if distance > 55:
-            reasons.append("Terdeteksi **Kerusakan/Sobek pada area Sirip atau Ekor**.")
-        
-        # Jika titik merah ada di area tengah, itu Tubuh
+            reasons.append("Ada kerusakan pada bagian sirip atau ekor")
         if distance <= 75:
-            reasons.append("Bentuk **Tubuh tidak ideal** (indikasi bengkok atau tidak simetris).")
+            reasons.append("Bentuk tubuh tidak ideal atau kurang simetris")
         
-        penjelasan_final = "**❌ ANALISIS KUALITAS BURUK:**\n\n"
-        for r in reasons:
-            penjelasan_final += f"- {r}\n"
-        
-        return penjelasan_final
-
+        if not reasons:
+            return "Terdeteksi adanya kelainan fisik pada benih."
+            
+        return ", ".join(reasons)
 def save_to_google_sheets(new_data_df):
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
