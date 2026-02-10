@@ -9,9 +9,9 @@ from streamlit_gsheets import GSheetsConnection
 
 @st.cache_resource
 def load_model_cloud():
-    file_id = '1i6RBVKi9BmSY_jvlypbMWOwvoO5Dyn1t'
+    file_id = '1kcCLln1DIDCVyEC_Qw26k8fKu2clLI2f'
     url = f'https://drive.google.com/uc?id={file_id}'
-    output = 'model_ready_petani.h5'
+    output = 'model_petani_siap.keras'
     if not os.path.exists(output):
         with st.spinner("✨ Menghubungkan ke Cloud AI..."):
             gdown.download(url, output, quiet=False)
