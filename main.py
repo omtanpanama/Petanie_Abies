@@ -89,7 +89,7 @@ if choice == "🏠 Halaman Utama":
                     st.success(f"## {label}")
                 
                 # Tampilan Metrik Akurasi di Halaman Utama
-                st.metric("Tingkat Keyakinan AI", accuracy_pct)
+                st.metric("Persentase Akurasi", accuracy_pct)
                 
                 # Penjelasan Detail
                 explanation = get_explanation(label, max_loc, heatmap_raw, is_dry)
