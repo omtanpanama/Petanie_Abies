@@ -72,7 +72,7 @@ def get_explanation(label, heatmap_data, is_dry=False):
     # Hitung intensitas panas di area pinggir (Threshold 0.3)
     avg_heat_pinggir = np.mean(heatmap_resized[mask_pinggir == 1])
     
-    if avg_heat_pinggir > 0.3:
+    if avg_heat_pinggir > 0.2:
         reasons.append("Sirip atau ekor tidak utuh/sobek")
 
     # 2. Cek Area Tengah (Fokus Bentuk Tubuh)
