@@ -17,10 +17,8 @@ from catatan_petani import render_catatan_petani
 # 1. Konfigurasi Awal
 st.set_page_config(page_title="Petani_Abies AI", layout="wide", page_icon="🐟")
 
-# Menerapkan CSS Kustom
 apply_custom_css()
 
-# 2. Load Model
 @st.cache_resource 
 def get_model():
     try:
@@ -36,40 +34,37 @@ if model is None:
 # 3. Navigasi Sidebar
 choice, sub_choice = show_navbar()
 
-# --- BAGIAN INPUT NAMA PETANI (MODAL SEKALI INPUT) ---
-with st.sidebar:
-    st.divider()
-    st.markdown("### 📝 Identitas Data")
-    
-    # Inisialisasi session state jika belum ada
-    if "nama_petani" not in st.session_state:
-        st.session_state.nama_petani = "Umum/Toko Barokah"
-    
-    # Input ini akan otomatis tersimpan selama aplikasi tidak direfresh total
-    st.session_state.nama_petani = st.text_input(
-        "Input Nama Petani/Lokasi:", 
-        value=st.session_state.nama_petani,
-        help="Nama ini akan tersimpan otomatis untuk setiap scan berikutnya."
-    )
-    
-    if st.session_state.nama_petani:
-        st.success(f"Aktif: **{st.session_state.nama_petani}**")
-
 st.markdown('<div class="main-content">', unsafe_allow_html=True)
 
 # --- LOGIKA NAVIGASI HALAMAN ---
 
 if choice == "🏠 Halaman Utama":
     st.title("🐟 Scan Kualitas Benih Otomatis")
-    st.write(f"Mencatat data untuk: **{st.session_state.nama_petani}**")
     
-    file = st.file_uploader("📤 Unggah Foto Ikan", type=['jpg', 'jpeg', 'png'])
+    # --- BAGIAN INPUT NAMA PETANI (DI ATAS UPLOAD) ---
+    st.markdown("### 📝 Identitas Pemilik")
+    if "nama_petani" not in st.session_state:
+        st.session_state.nama_petani = "" # Biarkan kosong agar user wajib isi
     
-    if file:
+    # Input Nama Petani berada tepat sebelum uploader
+    st.session_state.nama_petani = st.text_input(
+        "Masukkan Nama Petani / Lokasi Sawah:", 
+        value=st.session_state.nama_petani,
+        placeholder="Contoh: Pak Subur - Karanggeneng"
+    )
+    
+    # Memberi peringatan jika nama belum diisi
+    if not st.session_state.nama_petani:
+        st.warning("⚠️ Mohon isi nama petani terlebih dahulu sebelum mengunggah gambar.")
+    
+    # Tombol Upload
+    file = st.file_uploader("📤 Unggah Foto Ikan", type=['jpg', 'jpeg', 'png'], disabled=not st.session_state.nama_petani)
+    
+    if file and st.session_state.nama_petani:
         img = Image.open(file).convert("RGB")
         img_np = np.array(img)
         
-        with st.spinner("🔍 AI sedang memindai fisik ikan..."):
+        with st.spinner(f"🔍 AI memindai ikan milik {st.session_state.nama_petani}..."):
             # A. Prediksi Model
             mean_val = np.mean(img_np)
             processed = preprocess_image(img)
@@ -91,7 +86,7 @@ if choice == "🏠 Halaman Utama":
             col_img, col_txt = st.columns([1.3, 1])
             with col_img:
                 st.image(gradcam_img, use_container_width=True, 
-                         caption=f"Visualisasi Diagnosa (Akurasi: {accuracy_pct})")
+                         caption=f"Hasil Analisis - Pemilik: {st.session_state.nama_petani}")
                 
             with col_txt:
                 st.write("### 🩺 Diagnosa Pakar AI:")
@@ -100,19 +95,19 @@ if choice == "🏠 Halaman Utama":
                 else:
                     st.success(f"## {label}")
                 
-                st.metric("Persentase Akurasi", accuracy_pct)
+                st.metric("Tingkat Keyakinan AI", accuracy_pct)
                 
                 explanation = get_explanation(label, heatmap_raw, is_dry)
                 st.markdown("**Detail Temuan:**")
                 st.info(explanation)
             
-            # E. Penyimpanan Data ke Google Sheets (Termasuk Kolom Petani)
+            # E. Penyimpanan Data
             if "last_processed_file" not in st.session_state or st.session_state.last_processed_file != file.name:
                 try:
                     waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     new_row = pd.DataFrame([{
                         "Waktu": waktu, 
-                        "Petani": st.session_state.nama_petani, # <--- Input sekali pakai selamanya
+                        "Petani": st.session_state.nama_petani, 
                         "Hasil": label, 
                         "Keyakinan": accuracy_pct,
                         "Detail": explanation 
@@ -121,7 +116,7 @@ if choice == "🏠 Halaman Utama":
                     st.session_state.last_processed_file = file.name
                     st.toast(f"✅ Data {st.session_state.nama_petani} berhasil disimpan!")
                 except Exception as e:
-                    st.sidebar.error(f"Gagal simpan log: {e}")
+                    st.error(f"Gagal simpan log: {e}")
 
 elif choice == "👨‍🔬 Hasil Pakar":
     if sub_choice == "Pakar Dosen":
@@ -135,5 +130,4 @@ elif choice == "🛡️ Admin":
 
 st.markdown('</div>', unsafe_allow_html=True)
 
-# 4. Footer
 render_footer()
