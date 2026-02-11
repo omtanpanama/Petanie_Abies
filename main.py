@@ -8,7 +8,7 @@ import numpy as np
 from styles import apply_custom_css, render_footer
 from utils import (
     load_model_cloud, preprocess_image, save_to_google_sheets, 
-    generate_lime_explanation, get_explanation  # Menggunakan LIME sekarang
+    generate_gradcam, get_explanation  # Kembali menggunakan Grad-CAM yang sudah diperbaiki
 )
 from admin_page import show_navbar, render_admin_login, render_dashboard
 from hasil_pakar_dosen import render_pakar_dosen
@@ -51,15 +51,14 @@ if choice == "🏠 Halaman Utama":
         img = Image.open(file).convert("RGB")
         img_np = np.array(img)
         
-        with st.spinner("🔍 LIME sedang membedah anatomi ikan..."):
+        with st.spinner("🔍 AI sedang memindai fisik ikan..."):
             # A. Ekstraksi Fitur Dasar & Prediksi
             mean_val = np.mean(img_np)
             processed = preprocess_image(img)
             prediction = model.predict(processed, verbose=0)
             score = float(prediction[0][0])
             
-            # B. Klasifikasi Hasil & Filter Keamanan (Threshold)
-            # Kamu bisa naikkan threshold jika ingin lebih ketat terhadap objek bukan ikan
+            # B. Klasifikasi Hasil
             label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
             confidence = score if score > 0.5 else (1 - score)
             accuracy_pct = f"{confidence * 100:.2f}%"
@@ -67,8 +66,9 @@ if choice == "🏠 Halaman Utama":
             # Cek Kondisi Fisik Tambahan (Pucat/Kering)
             is_dry = True if mean_val > 200 else False
             
-            # C. Visualisasi LIME (Mendeteksi area spesifik: mata, sirip, badan)
-            lime_img, mask_result = generate_lime_explanation(img, model)
+            # C. Visualisasi Grad-CAM (Heatmap)
+            # Menggunakan heatmap_raw untuk analisis area sirip/badan
+            gradcam_img, heatmap_raw = generate_gradcam(img, model)
             
             st.divider()
             
@@ -76,8 +76,8 @@ if choice == "🏠 Halaman Utama":
             col_img, col_txt = st.columns([1.3, 1])
             
             with col_img:
-                st.image(lime_img, use_container_width=True, 
-                         caption=f"Visualisasi LIME (Tingkat Keyakinan: {accuracy_pct})")
+                st.image(gradcam_img, use_container_width=True, 
+                         caption=f"Visualisasi Diagnosa (Tingkat Keyakinan: {accuracy_pct})")
                 
             with col_txt:
                 st.write("### 🩺 Diagnosa Pakar AI:")
@@ -89,12 +89,12 @@ if choice == "🏠 Halaman Utama":
                 # Tampilan Metrik Akurasi
                 st.metric("Persentase Akurasi", accuracy_pct)
                 
-                # Penjelasan Detail (Mengambil hasil deteksi LIME)
-                explanation = get_explanation(label, mask_result, is_dry)
+                # E. Penjelasan Detail (Logika Area Masking di utils.py)
+                explanation = get_explanation(label, heatmap_raw, is_dry)
                 st.markdown("**Detail Temuan:**")
                 st.info(explanation)
             
-            # E. Penyimpanan Data ke Google Sheets
+            # F. Penyimpanan Data ke Google Sheets
             if "last_processed_file" not in st.session_state or st.session_state.last_processed_file != file.name:
                 try:
                     waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -102,7 +102,7 @@ if choice == "🏠 Halaman Utama":
                         "Waktu": waktu, 
                         "Hasil": label, 
                         "Keyakinan": accuracy_pct,
-                        "Detail": explanation  # Keterangan detail sekarang tersimpan
+                        "Detail": explanation 
                     }])
                     save_to_google_sheets(new_row)
                     st.session_state.last_processed_file = file.name
