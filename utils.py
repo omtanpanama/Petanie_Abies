@@ -6,8 +6,6 @@ import streamlit as st
 import pandas as pd
 import cv2
 from streamlit_gsheets import GSheetsConnection
-from lime import lime_image
-from skimage.segmentation import mark_boundaries
 
 @st.cache_resource
 def load_model_cloud():
@@ -26,73 +24,65 @@ def preprocess_image(image):
     x = tf.keras.applications.resnet50.preprocess_input(x)
     return x
 
-def generate_lime_explanation(img, model):
-    """
-    Menggunakan LIME untuk mendeteksi area fisik ikan secara spesifik.
-    """
-    # Konversi image ke array untuk LIME
-    img_array = np.array(img.resize((224, 224)))
-    
-    explainer = lime_image.LimeImageExplainer()
-    
-    # Fungsi prediksi untuk LIME
-    def predict_fn(images):
-        preds = model.predict(tf.keras.applications.resnet50.preprocess_input(images), verbose=0)
-        # ResNet50 kamu mungkin binary (1 output) atau 2 output
-        if preds.shape[1] == 1:
-            return np.hstack([1-preds, preds]) 
-        return preds
-
-    explanation = explainer.explain_instance(
-        img_array.astype('double'), 
-        predict_fn, 
-        top_labels=1, 
-        hide_color=0, 
-        num_samples=400 # Atur ke 200 agar tetap cepat di Streamlit
-        batch_size=10
+def generate_gradcam(img, model):
+    img_array = preprocess_image(img)
+    # Layer terakhir ResNet50 untuk heatmap yang presisi
+    last_conv_layer_name = "conv5_block3_out"
+    grad_model = tf.keras.models.Model(
+        [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
     )
 
-    # Ambil area (mask) yang paling berpengaruh terhadap label Kurang Sehat
-    temp, mask = explanation.get_image_and_mask(
-        explanation.top_labels[0], 
-        positive_only=True, 
-        num_features=10, 
-        hide_rest=False
-    )
+    with tf.GradientTape() as tape:
+        last_conv_layer_output, preds = grad_model(img_array)
+        class_channel = preds[0] 
+
+    grads = tape.gradient(class_channel, last_conv_layer_output)
+    pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
+    last_conv_layer_output = last_conv_layer_output[0]
+    heatmap = last_conv_layer_output @ pooled_grads[..., tf.newaxis]
+    heatmap = tf.squeeze(heatmap)
+
+    heatmap = tf.maximum(heatmap, 0) / (tf.math.reduce_max(heatmap) + 1e-10)
+    heatmap_raw = heatmap.numpy()
+
+    img_resized = np.array(img.resize((224, 224)))
+    heatmap_resized = cv2.resize(heatmap_raw, (224, 224))
     
-    # Overlay visualisasi
-    img_lime = mark_boundaries(temp / 255.0, mask)
-    img_lime = (img_lime * 255).astype(np.uint8)
+    heatmap_color = cv2.applyColorMap(np.uint8(255 * heatmap_resized), cv2.COLORMAP_JET)
+    superimposed_img = cv2.addWeighted(img_resized, 0.6, heatmap_color, 0.4, 0)
+    
+    return superimposed_img, heatmap_resized
 
-    return img_lime, mask
-
-def get_explanation(label, mask, is_dry=False):
+def get_explanation(label, heatmap_data, is_dry=False):
     if label == "KUALITAS BAIK":
-        return "Fisik proporsional, simetris, dan sirip lengkap."
+        return "Morfologi simetris, tubuh proporsional, dan sirip utuh."
     
     reasons = []
     if is_dry:
         reasons.append("Kondisi tubuh pucat atau kering")
 
-    # Ambil semua koordinat titik kuning
-    coords = np.argwhere(mask > 0)
+    # Pastikan heatmap dalam resolusi 224x224
+    heatmap_resized = cv2.resize(heatmap_data, (224, 224))
     
-    if len(coords) > 0:
-        # Cek apakah ada titik yang jauh dari tengah (Radius > 40)
-        # 112 adalah titik tengah gambar 224x224
-        distances = np.sqrt((coords[:, 1] - 112)**2 + (coords[:, 0] - 112)**2)
-        
-        # Jika ada titik kuning di area luar, berarti sirip bermasalah
-        if np.max(distances) > 40: 
-            reasons.append("Sirip atau ekor tidak utuh/sobek")
-            
-        # Jika banyak titik kuning menumpuk di tengah
-        if np.mean(distances) < 70:
-            reasons.append("Bentuk tubuh kurang proporsional")
-            
-        # Cek area kepala (Y rendah) untuk mata
-        if np.min(coords[:, 0]) < 80:
-             reasons.append("Indikasi kelainan pada area mata")
+    # --- LOGIKA DETEKSI AREA (PEKA SIRIP) ---
+    # 1. Cek Area Pinggir (Fokus Sirip dan Ekor)
+    mask_pinggir = np.ones((224, 224), dtype=np.uint8)
+    cv2.circle(mask_pinggir, (112, 112), 65, 0, -1) # Melubangi tengah, ambil pinggiran saja
+    
+    # Hitung intensitas panas di area pinggir (Threshold 0.3)
+    avg_heat_pinggir = np.mean(heatmap_resized[mask_pinggir == 1])
+    
+    if avg_heat_pinggir > 0.3:
+        reasons.append("Sirip atau ekor tidak utuh/sobek")
+
+    # 2. Cek Area Tengah (Fokus Bentuk Tubuh)
+    mask_tengah = np.zeros((224, 224), dtype=np.uint8)
+    cv2.circle(mask_tengah, (112, 112), 65, 1, -1)
+    
+    avg_heat_tengah = np.mean(heatmap_resized[mask_tengah == 1])
+    
+    if avg_heat_tengah > 0.4:
+        reasons.append("Bentuk tubuh kurang proporsional")
 
     if not reasons:
         return "Terdeteksi adanya kelainan fisik pada benih."
@@ -102,6 +92,7 @@ def get_explanation(label, mask, is_dry=False):
 def save_to_google_sheets(new_data_df):
     try:
         conn = st.connection("gsheets", type=GSheetsConnection)
+        # Pastikan Sheet1 sesuai dengan nama di Google Sheets kamu
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
         updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
         conn.update(worksheet="Sheet1", data=updated_df)
