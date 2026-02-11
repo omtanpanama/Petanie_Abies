@@ -7,5 +7,3 @@ pandas
 numpy
 st-gsheets-connection
 plotly
-lime
-scikit-image
