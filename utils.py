@@ -48,7 +48,8 @@ def generate_lime_explanation(img, model):
         predict_fn, 
         top_labels=1, 
         hide_color=0, 
-        num_samples=1000 # Atur ke 200 agar tetap cepat di Streamlit
+        num_samples=400 # Atur ke 200 agar tetap cepat di Streamlit
+        batch_size=10
     )
 
     # Ambil area (mask) yang paling berpengaruh terhadap label Kurang Sehat
