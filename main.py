@@ -4,24 +4,24 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 
-# Import modul pendukung (Pastikan file-file ini ada di folder yang sama)
+# Import modul pendukung
 from styles import apply_custom_css, render_footer
 from utils import (
     load_model_cloud, preprocess_image, save_to_google_sheets, 
-    generate_gradcam, get_explanation
+    generate_lime_explanation, get_explanation  # Menggunakan LIME sekarang
 )
 from admin_page import show_navbar, render_admin_login, render_dashboard
 from hasil_pakar_dosen import render_pakar_dosen
 from catatan_petani import render_catatan_petani
 
-# 1. Konfigurasi Awal (Harus di baris pertama setelah import)
+# 1. Konfigurasi Awal
 st.set_page_config(page_title="Petani_Abies AI", layout="wide", page_icon="🐟")
 
 # Menerapkan CSS Kustom
 apply_custom_css()
 
 # 2. Load Model dengan Error Handling
-@st.cache_resource # Menambahkan cache agar model tidak reload setiap kali ganti halaman
+@st.cache_resource 
 def get_model():
     try:
         return load_model_cloud()
@@ -51,17 +51,15 @@ if choice == "🏠 Halaman Utama":
         img = Image.open(file).convert("RGB")
         img_np = np.array(img)
         
-        with st.spinner("🔍 AI sedang memindai fisik ikan..."):
-            # A. Ekstraksi Fitur Dasar
+        with st.spinner("🔍 LIME sedang membedah anatomi ikan..."):
+            # A. Ekstraksi Fitur Dasar & Prediksi
             mean_val = np.mean(img_np)
-            
-            # B. Prediksi Model
             processed = preprocess_image(img)
             prediction = model.predict(processed, verbose=0)
             score = float(prediction[0][0])
             
-            # C. Klasifikasi Hasil
-            # Asumsi: score > 0.5 berarti Kurang Sehat, menyesuaikan dengan logika Anda
+            # B. Klasifikasi Hasil & Filter Keamanan (Threshold)
+            # Kamu bisa naikkan threshold jika ingin lebih ketat terhadap objek bukan ikan
             label = "KURANG SEHAT" if score > 0.5 else "KUALITAS BAIK"
             confidence = score if score > 0.5 else (1 - score)
             accuracy_pct = f"{confidence * 100:.2f}%"
@@ -69,17 +67,17 @@ if choice == "🏠 Halaman Utama":
             # Cek Kondisi Fisik Tambahan (Pucat/Kering)
             is_dry = True if mean_val > 200 else False
             
-            # D. Visualisasi Grad-CAM (Heatmap)
-            gradcam_img, max_loc, heatmap_raw = generate_gradcam(img, model)
+            # C. Visualisasi LIME (Mendeteksi area spesifik: mata, sirip, badan)
+            lime_img, mask_result = generate_lime_explanation(img, model)
             
             st.divider()
             
-            # Tata Letak Hasil Diagnosa
+            # D. Tata Letak Hasil Diagnosa
             col_img, col_txt = st.columns([1.3, 1])
             
             with col_img:
-                st.image(gradcam_img, use_container_width=True, 
-                         caption=f"Visualisasi Grad-CAM (Keyakinan: {accuracy_pct})")
+                st.image(lime_img, use_container_width=True, 
+                         caption=f"Visualisasi LIME (Tingkat Keyakinan: {accuracy_pct})")
                 
             with col_txt:
                 st.write("### 🩺 Diagnosa Pakar AI:")
@@ -88,22 +86,23 @@ if choice == "🏠 Halaman Utama":
                 else:
                     st.success(f"## {label}")
                 
-                # Tampilan Metrik Akurasi di Halaman Utama
+                # Tampilan Metrik Akurasi
                 st.metric("Persentase Akurasi", accuracy_pct)
                 
-                # Penjelasan Detail
-                explanation = get_explanation(label, max_loc, heatmap_raw, is_dry)
+                # Penjelasan Detail (Mengambil hasil deteksi LIME)
+                explanation = get_explanation(label, mask_result, is_dry)
+                st.markdown("**Detail Temuan:**")
                 st.info(explanation)
             
             # E. Penyimpanan Data ke Google Sheets
-            # Menggunakan session state agar tidak double save saat aplikasi rerun
             if "last_processed_file" not in st.session_state or st.session_state.last_processed_file != file.name:
                 try:
                     waktu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     new_row = pd.DataFrame([{
                         "Waktu": waktu, 
                         "Hasil": label, 
-                        "Keyakinan": accuracy_pct
+                        "Keyakinan": accuracy_pct,
+                        "Detail": explanation  # Keterangan detail sekarang tersimpan
                     }])
                     save_to_google_sheets(new_row)
                     st.session_state.last_processed_file = file.name
@@ -120,7 +119,6 @@ elif choice == "👨‍🔬 Hasil Pakar":
         st.info("Menampilkan informasi regulasi dan standar kualitas dari Dinas Perikanan.")
 
 elif choice == "🛡️ Admin":
-    # Fungsi ini menghandle form login dan menampilkan dashboard jika sukses
     if render_admin_login():
         render_dashboard()
 
