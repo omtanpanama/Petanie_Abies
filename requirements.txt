@@ -1,9 +1,11 @@
 opencv-python-headless
 streamlit
-tensorflow
+tensorflow>=2.13.0
 gdown
 pillow
 pandas
 numpy
 st-gsheets-connection
 plotly
+lime
+scikit-image
