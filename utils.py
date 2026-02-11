@@ -66,9 +66,6 @@ def generate_lime_explanation(img, model):
     return img_lime, mask
 
 def get_explanation(label, mask, is_dry=False):
-    """
-    Menganalisis lokasi mask LIME untuk menentukan jenis kerusakan fisik.
-    """
     if label == "KUALITAS BAIK":
         return "Fisik proporsional, simetris, dan sirip lengkap."
     
@@ -76,26 +73,25 @@ def get_explanation(label, mask, is_dry=False):
     if is_dry:
         reasons.append("Kondisi tubuh pucat atau kering")
 
-    # Analisis lokasi mask (224x224)
-    # Mencari titik pusat massa dari mask LIME
+    # Ambil semua koordinat titik kuning
     coords = np.argwhere(mask > 0)
+    
     if len(coords) > 0:
-        y_center, x_center = coords.mean(axis=0)
+        # Cek apakah ada titik yang jauh dari tengah (Radius > 40)
+        # 112 adalah titik tengah gambar 224x224
+        distances = np.sqrt((coords[:, 1] - 112)**2 + (coords[:, 0] - 112)**2)
         
-        # Hitung jarak dari pusat gambar (112, 112)
-        dist = np.sqrt((x_center - 112)**2 + (y_center - 112)**2)
-
-        # 1. Cek Area Mata (Biasanya di bagian depan atas)
-        if y_center < 90 and x_center > 130:
-            reasons.append("Kelainan pada area mata")
-        
-        # 2. Cek Area Sirip/Ekor (Jauh dari pusat)
-        if dist > 40:
-            reasons.append("Sirip tidak utuh atau ada kerusakan")
+        # Jika ada titik kuning di area luar, berarti sirip bermasalah
+        if np.max(distances) > 40: 
+            reasons.append("Sirip atau ekor tidak utuh/sobek")
             
-        # 3. Cek Area Tubuh (Dekat pusat)
-        if dist <= 75:
+        # Jika banyak titik kuning menumpuk di tengah
+        if np.mean(distances) < 70:
             reasons.append("Bentuk tubuh kurang proporsional")
+            
+        # Cek area kepala (Y rendah) untuk mata
+        if np.min(coords[:, 0]) < 80:
+             reasons.append("Indikasi kelainan pada area mata")
 
     if not reasons:
         return "Terdeteksi adanya kelainan fisik pada benih."
