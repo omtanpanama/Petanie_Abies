@@ -48,14 +48,14 @@ def generate_lime_explanation(img, model):
         predict_fn, 
         top_labels=1, 
         hide_color=0, 
-        num_samples=200 # Atur ke 200 agar tetap cepat di Streamlit
+        num_samples=1000 # Atur ke 200 agar tetap cepat di Streamlit
     )
 
     # Ambil area (mask) yang paling berpengaruh terhadap label Kurang Sehat
     temp, mask = explanation.get_image_and_mask(
         explanation.top_labels[0], 
         positive_only=True, 
-        num_features=5, 
+        num_features=10, 
         hide_rest=False
     )
     
@@ -90,7 +90,7 @@ def get_explanation(label, mask, is_dry=False):
             reasons.append("Kelainan pada area mata")
         
         # 2. Cek Area Sirip/Ekor (Jauh dari pusat)
-        if dist > 50:
+        if dist > 40:
             reasons.append("Sirip tidak utuh atau ada kerusakan")
             
         # 3. Cek Area Tubuh (Dekat pusat)
