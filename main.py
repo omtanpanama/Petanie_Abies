@@ -64,7 +64,7 @@ if choice == "🏠 Halaman Utama":
         img = Image.open(file).convert("RGB")
         img_np = np.array(img)
         
-        with st.spinner(f"🔍 AI memindai ikan milik {st.session_state.nama_petani}..."):
+        with st.spinner(f"🔍 memindai ikan milik {st.session_state.nama_petani}..."):
             # A. Prediksi Model
             mean_val = np.mean(img_np)
             processed = preprocess_image(img)
@@ -89,13 +89,13 @@ if choice == "🏠 Halaman Utama":
                          caption=f"Hasil Analisis - Pemilik: {st.session_state.nama_petani}")
                 
             with col_txt:
-                st.write("### 🩺 Diagnosa Pakar AI:")
+                st.markdown("### 🔍 **Hasil Analisis Kualitas AI**")
                 if label == "KURANG SEHAT":
                     st.error(f"## {label}")
                 else:
                     st.success(f"## {label}")
                 
-                st.metric("Tingkat Keyakinan AI", accuracy_pct)
+                st.metric("Tingkat Akurasi", accuracy_pct)
                 
                 explanation = get_explanation(label, heatmap_raw, is_dry)
                 st.markdown("**Detail Temuan:**")
