@@ -9,7 +9,7 @@ def show_navbar():
         choice = st.selectbox("Pilih Halaman:", ["🏠 Halaman Utama", "👨‍🔬 Hasil Pakar", "🛡️ Admin"])
         sub_choice = None
         if choice == "👨‍🔬 Hasil Pakar":
-            sub_choice = st.selectbox("Pilih Kategori:", ["Pakar Dosen", "Petani", "Dinas Perikanan"])
+            sub_choice = st.selectbox("Pilih Kategori:", ["Pakar Dosen", "Petani"])
         return choice, sub_choice
 
 def render_admin_login():
