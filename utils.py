@@ -5,7 +5,12 @@ import os
 import streamlit as st
 import pandas as pd
 import cv2
-from streamlit_gsheets import GSheetsConnection
+import base64
+import json
+import gspread
+from google.oauth2.service_account import Credentials
+
+# GSheetsConnection dihapus karena kita beralih ke gspread murni yang jauh lebih stabil untuk membaca Base64
 
 @st.cache_resource
 def load_model_cloud():
@@ -91,16 +96,26 @@ def get_explanation(label, heatmap_data, is_dry=False):
 
 def save_to_google_sheets(new_data_df):
     try:
-        # Membuka koneksi otomatis menggunakan data dari Streamlit Secrets
-        conn = st.connection("gsheets", type=GSheetsConnection)
+        # 1. Dekode kunci Base64 dari Secrets ke bentuk JSON asli di memori
+        base64_creds = st.secrets["gcp_credentials"]["json_base64"]
+        creds_json = json.loads(base64.b64decode(base64_creds).decode("utf-8"))
         
-        # Membaca data yang sudah ada di Sheet1
-        existing_data = conn.read(worksheet="Sheet1", ttl=0)
+        scope = [
+            'https://spreadsheets.google.com/feeds',
+            'https://www.googleapis.com/auth/drive'
+        ]
         
-        # Menggabungkan data lama dengan data hasil scan baru
-        updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
+        # 2. Login otomatis menggunakan kredensial hasil dekode
+        creds = Credentials.from_service_account_info(creds_json, scopes=scope)
+        client = gspread.authorize(creds)
         
-        # Menulis kembali data yang sudah diperbarui ke Google Sheets
-        conn.update(worksheet="Sheet1", data=updated_df)
+        # 3. Hubungkan langsung ke target spreadsheet lewat URL-nya
+        spreadsheet_url = st.secrets["connections"]["gsheets"]["spreadsheet"]
+        sheet = client.open_by_url(spreadsheet_url).sheet1
+        
+        # 4. Tambahkan baris data baru ke Google Sheets
+        row_to_add = new_data_df.values.tolist()[0]
+        sheet.append_row(row_to_add)
+        
     except Exception as e:
         st.error(f"Gagal simpan ke Sheets: {e}")
