@@ -15,6 +15,26 @@ def show_navbar():
             sub_choice = st.selectbox("Pilih Kategori:", ["Pakar Dosen", "Petani"])
         return choice, sub_choice
 
+def render_admin_login():
+    st.title("🔐 Panel Akses Admin")
+    if 'logged_in' not in st.session_state:
+        st.session_state.logged_in = False
+
+    if not st.session_state.logged_in:
+        with st.container():
+            pwd = st.text_input("Masukkan Sandi Admin", type="password")
+            col1, col2 = st.columns([1, 1])
+            if col1.button("Login Sekarang"):
+                if pwd == "admin123":
+                    st.session_state.logged_in = True
+                    st.rerun()
+                else:
+                    st.error("Sandi Salah!")
+            if col2.button("Batal"):
+                st.info("Kembali ke Halaman Utama")
+        return False
+    return True
+
 def render_dashboard():
     st.title("📊 Pusat Kendali & Analisis Data")
     
@@ -32,7 +52,10 @@ def render_dashboard():
         sheet = client.open_by_url(spreadsheet_url).sheet1
         
         records = sheet.get_all_records()
-        df = pd.DataFrame(records)        if not df.empty:
+        df = pd.DataFrame(records)
+        
+        # --- PERBAIKAN: Dipindah ke baris baru dengan indentasi yang benar ---
+        if not df.empty:
             # --- 0. FITUR FILTER PETANI (TERBARU) ---
             st.markdown("### 🔍 Filter Laporan")
             
