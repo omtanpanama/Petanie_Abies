@@ -91,10 +91,16 @@ def get_explanation(label, heatmap_data, is_dry=False):
 
 def save_to_google_sheets(new_data_df):
     try:
+        # Membuka koneksi otomatis menggunakan data dari Streamlit Secrets
         conn = st.connection("gsheets", type=GSheetsConnection)
-        # Pastikan Sheet1 sesuai dengan nama di Google Sheets kamu
+        
+        # Membaca data yang sudah ada di Sheet1
         existing_data = conn.read(worksheet="Sheet1", ttl=0)
+        
+        # Menggabungkan data lama dengan data hasil scan baru
         updated_df = pd.concat([existing_data, new_data_df], ignore_index=True)
+        
+        # Menulis kembali data yang sudah diperbarui ke Google Sheets
         conn.update(worksheet="Sheet1", data=updated_df)
     except Exception as e:
         st.error(f"Gagal simpan ke Sheets: {e}")
